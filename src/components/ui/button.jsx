@@ -1,4 +1,3 @@
-/* eslint-disable react-refresh/only-export-components */
 import { cva } from 'class-variance-authority'
 import { Slot } from 'radix-ui'
 
