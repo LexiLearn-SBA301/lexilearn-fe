@@ -9,22 +9,27 @@ Dự án Frontend cho hệ thống LexiLearn, xây dựng dựa trên React 19 v
 Để đảm bảo tính nhất quán của mã nguồn và tránh việc cài đặt các thư viện trùng lặp hoặc không đồng nhất, dự án thống nhất sử dụng các thư viện cốt lõi sau:
 
 ### 1. Nền tảng (Core Stack)
+
 - **React 19**: Phiên bản React mới nhất tối ưu hiệu năng.
 - **Vite 8**: Công cụ build siêu nhanh hỗ trợ Hot Module Replacement (HMR).
 
 ### 2. Định dạng & Giao diện (Styling & Icons)
+
 - **Tailwind CSS v4**: Phiên bản Tailwind CSS mới nhất, xử lý compile-time nhanh vượt trội.
 - **Lucide React**: Bộ icon SVG nhẹ, đồng bộ và đẹp mắt cho giao diện.
 - **tw-animate-css**: Thư viện hỗ trợ các chuyển động (animations) mượt mà cho Tailwind.
 
 ### 3. Điều hướng & Quản lý State (Routing & State Management)
+
 - **React Router DOM**: Quản lý định tuyến (routing) cho Single Page Application (SPA).
 - **Zustand**: Quản lý state toàn cục nhẹ nhàng, dễ sử dụng, thay thế cho Redux/Context khi cần chia sẻ state phức tạp.
 
 ### 4. Truy vấn dữ liệu (Data Fetching & Caching)
-- **TanStack React Query (@tanstack/react-query)**: Quản lý việc gọi API, tự động lưu bộ nhớ đệm (caching), đồng bộ hóa và cập nhật trạng thái dữ liệu từ server. *Tất cả các lệnh gọi API lấy dữ liệu nên được viết qua React Query.*
+
+- **TanStack React Query (@tanstack/react-query)**: Quản lý việc gọi API, tự động lưu bộ nhớ đệm (caching), đồng bộ hóa và cập nhật trạng thái dữ liệu từ server. _Tất cả các lệnh gọi API lấy dữ liệu nên được viết qua React Query._
 
 ### 5. Biểu mẫu (Form Handling & Validation)
+
 - **React Hook Form**: Quản lý form hiệu năng cao, giảm số lần re-render.
 - **Zod**: Khai báo và xác thực (validate) schema dữ liệu đầu vào của form một cách chặt chẽ.
 
@@ -45,6 +50,13 @@ Dự án Frontend cho hệ thống LexiLearn, xây dựng dựa trên React 19 v
 3. **Đồng bộ phiên bản Node.js**:
    - Dự án khuyến nghị sử dụng Node.js phiên bản **`>=20.0.0`** (LTS).
 
+4. **Kiểm tra Code tự động trước khi Commit (Git Hooks với Husky)**:
+   - Dự án đã được tích hợp **Husky** và **lint-staged**. Mỗi khi lập trình viên thực hiện lệnh `git commit`, hệ thống sẽ tự động:
+     - Quét lỗi cú pháp bằng **ESLint** trên các file `.js`, `.jsx` đang được thay đổi.
+     - Tự động định dạng code bằng **Prettier** trên các file `.js`, `.jsx`, `.css`, `.json`, `.md`.
+   - **Nếu xảy ra lỗi**: Lệnh commit sẽ bị chặn và lý do lỗi cụ thể sẽ được hiển thị ngay trên Terminal để lập trình viên chỉnh sửa trước khi commit lại.
+   - _Lưu ý_: Không tự ý tắt (bypass) cơ chế kiểm tra này bằng tham số `--no-verify` trừ trường hợp được duyệt trước.
+
 ---
 
 ## 🚀 Các lệnh chạy dự án (Commands)
@@ -52,19 +64,25 @@ Dự án Frontend cho hệ thống LexiLearn, xây dựng dựa trên React 19 v
 Trong thư mục dự án, bạn có thể chạy các lệnh sau:
 
 ### Chạy môi trường phát triển (Development)
+
 ```bash
 npm run dev
 ```
+
 Mở [http://localhost:5173](http://localhost:5173) trên trình duyệt để xem kết quả.
 
 ### Build dự án (Production)
+
 ```bash
 npm run build
 ```
+
 Biên dịch dự án tối ưu hóa cho môi trường Production vào thư mục `dist/`.
 
 ### Kiểm tra Code (Linting)
+
 ```bash
 npm run lint
 ```
+
 Chạy ESLint để quét lỗi cú pháp và định dạng code.

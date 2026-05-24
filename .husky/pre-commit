@@ -1,0 +1,14 @@
+echo "🔍 [Husky] Đang kiểm tra định dạng và chất lượng code..."
+
+npx lint-staged
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ [Husky Error] Phát hiện lỗi code hoặc định dạng chưa chuẩn!"
+  echo "👉 Vui lòng kiểm tra chi tiết các lỗi được in ra ở phía trên."
+  echo "👉 Sau khi sửa lỗi, hãy lưu lại, 'git add' các file và thực hiện commit lại."
+  echo ""
+  exit 1
+fi
+
+echo "✅ [Husky] Kiểm tra thành công! Tiến hành commit..."
