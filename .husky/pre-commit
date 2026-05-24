@@ -1,4 +1,4 @@
-echo "🔍 [Husky] Đang kiểm tra định dạng và chất lượng code..."
+echo "[Husky] Đang kiểm tra định dạng và chất lượng code..."
 
 npx lint-staged
 
