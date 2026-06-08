@@ -35,54 +35,43 @@ Dự án Frontend cho hệ thống LexiLearn, xây dựng dựa trên React 19 v
 
 ---
 
-## 🧑‍💻 Quy tắc làm việc nhóm (Team Workflow Guidelines)
+## 📁 Cấu trúc thư mục (Project Structure)
 
-Để tránh tình trạng xung đột phiên bản thư viện hoặc cài đặt các gói không đồng nhất giữa các máy của lập trình viên:
+Dự án theo kiến trúc **feature-based**: code được gom theo _tính năng_ thay vì theo _loại file_, giúp dễ scale khi team đông và app lớn dần.
 
-1. **Sử dụng `npm ci` thay vì `npm install`**:
-   - Khi bạn kéo code mới từ Git về, hãy chạy **`npm ci`** (Clean Install). Lệnh này sẽ cài đặt chính xác các phiên bản được cố định trong file `package-lock.json`.
-   - **Tuyệt đối KHÔNG** tự ý xóa hoặc bỏ qua việc commit file `package-lock.json` lên Git.
+```
+src/
+├─ app/             # Khởi tạo app: providers (QueryClient...), cấu hình router
+├─ assets/          # Ảnh, font, file tĩnh
+├─ components/
+│  ├─ ui/           # Component UI cơ bản từ shadcn/ui (button, input...)
+│  ├─ common/       # Component dùng chung (spinner, error boundary...)
+│  └─ layout/       # Khung layout (header, sidebar, footer)
+├─ features/        # MỖI tính năng 1 folder, tự chứa mọi thứ của nó (xem bên dưới)
+├─ hooks/           # Custom hooks dùng chung toàn app
+├─ lib/             # Tiện ích: api client, utils (hàm `cn`), helpers
+├─ routes/          # Cấu hình route tập trung + route guard (protected route)
+├─ App.jsx          # Root component
+├─ main.jsx         # Điểm vào (entry point)
+└─ index.css        # Tailwind + design tokens (biến màu, radius, font)
+```
 
-2. **Không tự ý cài đặt thư viện mới**:
-   - Mọi thư viện mới cài thêm cần được thảo luận trước với Team Lead hoặc thảo luận chung trong nhóm để thống nhất.
-   - Khi cài thư viện mới, cần cài phiên bản ổn định (`@latest`), tuyệt đối không cài các gói không rõ nguồn gốc.
+### Quy ước cho mỗi feature
 
-3. **Đồng bộ phiên bản Node.js**:
-   - Dự án khuyến nghị sử dụng Node.js phiên bản **`>=20.0.0`** (LTS).
+Mỗi tính năng trong `src/features/` nên tự chứa (self-contained) theo khung sau, chỉ tạo folder con khi thực sự cần:
 
-4. **Kiểm tra Code tự động trước khi Commit (Git Hooks với Husky)**:
-   - Dự án đã được tích hợp **Husky** và **lint-staged**. Mỗi khi lập trình viên thực hiện lệnh `git commit`, hệ thống sẽ tự động:
-     - Quét lỗi cú pháp bằng **ESLint** trên các file `.js`, `.jsx` đang được thay đổi.
-     - Tự động định dạng code bằng **Prettier** trên các file `.js`, `.jsx`, `.css`, `.json`, `.md`.
-   - **Nếu xảy ra lỗi**: Lệnh commit sẽ bị chặn và lý do lỗi cụ thể sẽ được hiển thị ngay trên Terminal để lập trình viên chỉnh sửa trước khi commit lại.
-   - _Lưu ý_: Không tự ý tắt (bypass) cơ chế kiểm tra này bằng tham số `--no-verify` trừ trường hợp được duyệt trước.
+```
+features/<ten-feature>/      # ví dụ: auth, vocabulary, lesson...
+├─ api/          # Hàm gọi API của feature (bọc lại bằng React Query)
+├─ hooks/        # Hooks riêng của feature (useLogin, useVocabularies...)
+├─ store/        # State cục bộ của feature (Zustand) nếu cần
+├─ components/   # Component chỉ dùng trong feature này
+├─ schemas/      # Schema Zod để validate form/dữ liệu
+└─ pages/        # Component cấp trang, gắn vào router
+```
+
+Repo đã có sẵn folder mẫu **`src/features/_example/`** dựng đúng khung trên — chỉ cần **copy, đổi tên** thành feature thật (vd `auth`, `vocabulary`) rồi điền code. Xoá folder con nào feature không dùng tới.
+
+> **Nguyên tắc:** Cái gì chỉ 1 feature dùng → đặt trong feature đó. Khi ≥ 2 feature dùng chung → nâng lên `src/components`, `src/hooks` hoặc `src/lib`.
 
 ---
-
-## 🚀 Các lệnh chạy dự án (Commands)
-
-Trong thư mục dự án, bạn có thể chạy các lệnh sau:
-
-### Chạy môi trường phát triển (Development)
-
-```bash
-npm run dev
-```
-
-Mở [http://localhost:5173](http://localhost:5173) trên trình duyệt để xem kết quả.
-
-### Build dự án (Production)
-
-```bash
-npm run build
-```
-
-Biên dịch dự án tối ưu hóa cho môi trường Production vào thư mục `dist/`.
-
-### Kiểm tra Code (Linting)
-
-```bash
-npm run lint
-```
-
-Chạy ESLint để quét lỗi cú pháp và định dạng code.
