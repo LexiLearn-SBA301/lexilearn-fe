@@ -42,6 +42,7 @@
 }
 
 @theme inline {
+  /* Khai báo gốc của Shadcn */
   --font-heading: var(--font-sans);
   --font-sans: 'Geist Variable', sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
@@ -82,6 +83,31 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* --- BỔ SUNG CẤU HÌNH THƯ HIÊN --- */
+  /* Ghi đè màu nền và primary/secondary theo Brand */
+  --color-background: #fff8ef;
+  --color-primary: #412311;
+  --color-secondary: #ab3429;
+
+  /* Thêm các màu đặc trưng của Thư Hiên */
+  --color-tertiary-container: #004943;
+  --color-on-tertiary-container: #79b8af;
+  --color-surface-container: #f4ede1;
+  --color-surface-container-high: #eee7dc;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface: #fff8ef;
+  --color-on-surface-variant: #50443e;
+  --color-outline-variant: #d5c3bb;
+  --color-bright-cream: #fff9ef;
+  --color-earth-beige: #e6d7c5;
+  --color-brown-black: #2b211c;
+
+  /* Thêm bộ Fonts mới */
+  --font-title: 'Playfair Display', serif;
+  --font-body: 'Be Vietnam Pro', sans-serif;
+  --font-quote: 'Noto Serif', serif;
+  /* ---------------------------------- */
 }
 
 .dark {
@@ -123,10 +149,19 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-on-surface-variant;
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-body);
+  }
+  /* Ép tất cả các thẻ tiêu đề (H1 -> H6) tự động dùng font Playfair */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-title);
   }
 }
 
@@ -138,4 +173,54 @@ body,
 
 body {
   margin: 0;
+}
+
+/* --- LỚP TIỆN ÍCH DÀNH RIÊNG CHO THƯ HIÊN --- */
+@layer utilities {
+  .font-title {
+    font-family: var(--font-playfair);
+  }
+  .font-body {
+    font-family: var(--font-be);
+  }
+  .font-quote {
+    font-family: var(--font-noto);
+  }
+
+  .watermark-pattern {
+    background-image: radial-gradient(
+      circle at center,
+      rgba(197, 154, 74, 0.03) 0%,
+      transparent 70%
+    );
+  }
+
+  .literature-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow:
+      0 4px 6px -1px rgba(90, 56, 37, 0.08),
+      0 2px 4px -1px rgba(90, 56, 37, 0.04);
+  }
+
+  .literature-card:hover {
+    transform: translateY(-8px);
+    box-shadow:
+      0 20px 25px -5px rgba(90, 56, 37, 0.12),
+      0 10px 10px -5px rgba(90, 56, 37, 0.06);
+  }
+
+  .literature-card:hover .cover-img {
+    transform: scale(1.04);
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #d5c3bb;
+    border-radius: 4px;
+  }
 }
