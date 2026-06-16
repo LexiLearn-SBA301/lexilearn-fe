@@ -69,9 +69,12 @@ export const Header = () => {
           <button className="text-on-surface-variant hover:text-primary p-2 rounded-full hover:bg-surface-container transition-colors">
             <Search size={20} strokeWidth={2} />
           </button>
-          <button className="hidden md:block px-6 py-2.5 bg-[#ab3429] text-white rounded-full hover:bg-[#8a1c14] transition-all font-semibold shadow-md text-[15px]">
+          <Link
+            to="/dang-nhap"
+            className="hidden md:block px-6 py-2.5 bg-[#ab3429] text-white rounded-full hover:bg-[#8a1c14] transition-all font-semibold shadow-md text-[15px]"
+          >
             Đăng nhập
-          </button>
+          </Link>
           <button className="md:hidden p-2 text-on-surface-variant">
             <Menu size={24} />
           </button>
