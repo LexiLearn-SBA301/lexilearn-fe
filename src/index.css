@@ -95,7 +95,9 @@
   --color-on-tertiary-container: #79b8af;
   --color-surface-container: #f4ede1;
   --color-surface-container-high: #eee7dc;
+  --color-surface-container-low: #faf3e7;
   --color-surface-container-lowest: #ffffff;
+  --color-on-secondary-container: #700605;
   --color-surface: #fff8ef;
   --color-on-surface-variant: #50443e;
   --color-outline-variant: #d5c3bb;
@@ -199,6 +201,13 @@ body {
   }
   .ink-shadow {
     box-shadow: 0 4px 20px rgba(90, 56, 37, 0.08);
+  }
+  .bg-pattern-dots {
+    background-image: radial-gradient(
+      rgba(90, 56, 37, 0.1) 1px,
+      transparent 1px
+    );
+    background-size: 20px 20px;
   }
 
   .watermark-pattern {

@@ -7,6 +7,7 @@ import { AuthorDetailPage } from './features/author/pages/AuthorDetailPage'
 
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
+import { RegisterPage } from './pages/RegisterPage'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
 // Khởi tạo một instance của QueryClient
@@ -32,6 +33,7 @@ export default function App() {
               <Route path="/tac-gia" element={<AuthorListPage />} />
               <Route path="/tac-gia/:slug" element={<AuthorDetailPage />} />
               <Route path="/dang-nhap" element={<LoginPage />} />
+              <Route path="/dang-ky" element={<RegisterPage />} />
             </Routes>
           </div>
           <Footer />
