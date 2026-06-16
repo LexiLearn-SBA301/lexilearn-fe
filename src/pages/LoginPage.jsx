@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
 
 export const LoginPage = () => {
@@ -130,12 +131,12 @@ export const LoginPage = () => {
             <div className="mt-6 text-center">
               <p className="font-body text-base text-on-surface-variant">
                 Chưa có tài khoản?
-                <a
+                <Link
                   className="font-body text-[15px] font-semibold tracking-wide text-secondary hover:underline decoration-secondary/30 transition-all ml-1"
-                  href="#"
+                  to="/dang-ky"
                 >
                   Đăng ký tài khoản mới
-                </a>
+                </Link>
               </p>
             </div>
           </div>

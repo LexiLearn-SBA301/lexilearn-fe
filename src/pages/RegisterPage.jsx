@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   User,
   Mail,
@@ -13,7 +14,7 @@ export const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false)
 
   return (
-    <main className="bg-pattern-dots flex items-center justify-center p-4 md:p-8 min-h-[calc(100svh-5rem)]">
+    <main className="bg-pattern-dots flex items-center justify-center p-4 md:px-8 md:py-4 min-h-[calc(100svh-5rem)]">
       <div className="max-w-6xl w-full bg-bright-cream rounded-3xl ink-shadow overflow-hidden flex flex-col md:flex-row border border-earth-beige relative">
         {/* Left Side: Illustration Panel */}
         <div className="hidden md:block md:w-1/2 relative bg-surface-container-low overflow-hidden">
@@ -41,16 +42,16 @@ export const RegisterPage = () => {
         </div>
 
         {/* Right Side: Registration Form */}
-        <div className="w-full md:w-1/2 p-8 md:px-12 md:py-8 flex flex-col justify-center bg-bright-cream relative z-10">
+        <div className="w-full md:w-1/2 p-8 md:px-12 md:py-5 flex flex-col justify-center bg-bright-cream relative z-10">
           {/* Brand Logo */}
-          <div className="mb-6 text-center md:text-left">
+          <div className="mb-3 text-center md:text-left">
             <h1 className="font-title text-2xl font-bold text-primary tracking-tight">
               Thư Hiên
             </h1>
           </div>
 
-          <div className="mb-6">
-            <h2 className="font-title text-[32px] font-semibold text-primary mb-2">
+          <div className="mb-4">
+            <h2 className="font-title text-[28px] font-semibold text-primary mb-1">
               Tạo tài khoản mới
             </h2>
             <p className="font-body text-base text-on-surface-variant">
@@ -58,7 +59,7 @@ export const RegisterPage = () => {
             </p>
           </div>
 
-          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+          <form className="space-y-2.5" onSubmit={(e) => e.preventDefault()}>
             {/* Họ và tên */}
             <div>
               <label
@@ -72,7 +73,7 @@ export const RegisterPage = () => {
                   <User size={20} />
                 </span>
                 <input
-                  className="w-full pl-10 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base"
+                  className="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base"
                   id="fullname"
                   placeholder="Nguyễn Văn A"
                   type="text"
@@ -93,7 +94,7 @@ export const RegisterPage = () => {
                   <Mail size={20} />
                 </span>
                 <input
-                  className="w-full pl-10 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base"
+                  className="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base"
                   id="email"
                   placeholder="email@domain.com"
                   type="email"
@@ -114,7 +115,7 @@ export const RegisterPage = () => {
                   <Lock size={20} />
                 </span>
                 <input
-                  className="w-full pl-10 pr-12 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base"
+                  className="w-full pl-10 pr-12 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base"
                   id="password"
                   placeholder="••••••••"
                   type={showPassword ? 'text' : 'password'}
@@ -143,7 +144,7 @@ export const RegisterPage = () => {
                   <KeyRound size={20} />
                 </span>
                 <input
-                  className="w-full pl-10 pr-4 py-3 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base"
+                  className="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base"
                   id="confirm_password"
                   placeholder="••••••••"
                   type="password"
@@ -151,41 +152,9 @@ export const RegisterPage = () => {
               </div>
             </div>
 
-            {/* Terms Checkbox */}
-            <div className="flex items-start mt-2">
-              <div className="flex items-center h-5">
-                <input
-                  className="w-4 h-4 text-secondary bg-surface-container-lowest border-outline-variant rounded focus:ring-secondary focus:ring-2"
-                  id="terms"
-                  type="checkbox"
-                />
-              </div>
-              <div className="ml-3">
-                <label
-                  className="font-body text-base text-on-surface-variant"
-                  htmlFor="terms"
-                >
-                  Tôi đồng ý với{' '}
-                  <a
-                    className="text-secondary hover:underline font-medium"
-                    href="#"
-                  >
-                    Điều khoản
-                  </a>{' '}
-                  và{' '}
-                  <a
-                    className="text-secondary hover:underline font-medium"
-                    href="#"
-                  >
-                    Chính sách
-                  </a>
-                </label>
-              </div>
-            </div>
-
             {/* Submit Button */}
             <button
-              className="w-full mt-6 py-3 px-4 bg-gradient-to-r from-secondary to-secondary-container text-white font-body text-[15px] font-semibold tracking-wide rounded-lg shadow-[0_4px_14px_rgba(171,52,41,0.25)] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 flex justify-center items-center gap-2"
+              className="w-full mt-4 py-2.5 px-4 bg-gradient-to-r from-secondary to-secondary-container text-white font-body text-[15px] font-semibold tracking-wide rounded-lg shadow-[0_4px_14px_rgba(171,52,41,0.25)] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 flex justify-center items-center gap-2"
               type="submit"
             >
               Đăng ký
@@ -194,15 +163,15 @@ export const RegisterPage = () => {
           </form>
 
           {/* Login Link */}
-          <div className="mt-6 text-center border-t border-outline-variant/30 pt-6">
+          <div className="mt-4 text-center border-t border-outline-variant/30 pt-4">
             <p className="font-body text-base text-on-surface-variant">
               Đã có tài khoản?
-              <a
+              <Link
                 className="font-body text-[15px] font-semibold tracking-wide text-secondary hover:text-on-secondary-container transition-colors ml-1 underline decoration-secondary/30 underline-offset-4"
-                href="#"
+                to="/dang-nhap"
               >
                 Đăng nhập ngay
-              </a>
+              </Link>
             </p>
           </div>
         </div>
