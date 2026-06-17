@@ -46,7 +46,7 @@ export const RegisterPage = () => {
           {/* Brand Logo */}
           <div className="mb-3 text-center md:text-left">
             <h1 className="font-title text-2xl font-bold text-primary tracking-tight">
-              Thư Hiên
+              Mộc Bản
             </h1>
           </div>
 

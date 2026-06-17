@@ -10,6 +10,10 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
+
+// Admin Pages
+import { WorkAdminPage } from './features/library/pages/WorkAdminPage'
+import { AuthorAdminPage } from './features/author/pages/AuthorAdminPage'
 // Khởi tạo một instance của QueryClient
 const queryClient = new QueryClient()
 
@@ -22,18 +26,17 @@ export default function App() {
 
           <div className="flex-grow flex flex-col pt-20">
             <Routes>
-              {/* Tự động chuyển hướng từ trang chủ vào Thư viện */}
               <Route path="/" element={<HomePage />} />
-
-              {/* Tuyến đường 1: Thư viện (Danh sách sách) */}
               <Route path="/thu-vien" element={<LibraryPage />} />
-
-              {/* Tuyến đường 2: Chi tiết tác phẩm (Bắt tham số slug) */}
               <Route path="/thu-vien/:slug" element={<WorkDetailPage />} />
               <Route path="/tac-gia" element={<AuthorListPage />} />
               <Route path="/tac-gia/:slug" element={<AuthorDetailPage />} />
               <Route path="/dang-nhap" element={<LoginPage />} />
               <Route path="/dang-ky" element={<RegisterPage />} />
+              {/* --- ADMIN ROUTES --- */}
+              {/* Tạm thời để mở để dev, sau này team làm Auth thì bọc <ProtectedRoute> vào đây */}
+              <Route path="/admin/tac-gia" element={<AuthorAdminPage />} />
+              <Route path="/admin/thu-vien" element={<WorkAdminPage />} />
             </Routes>
           </div>
           <Footer />
