@@ -2,7 +2,7 @@ import axios from 'axios'
 
 // Cấu hình base URL trỏ thẳng vào backend Spring Boot của bạn
 export const apiClient = axios.create({
-  baseURL: 'http://localhost:8080/api/v1',
+  baseURL: 'http://localhost:8080/api/',
   headers: {
     'Content-Type': 'application/json',
   },

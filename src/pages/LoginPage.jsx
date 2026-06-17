@@ -35,7 +35,7 @@ export const LoginPage = () => {
                 Đăng nhập
               </h1>
               <p className="font-body text-base text-on-surface-variant">
-                Chào mừng bạn trở lại với Thư Hiên.
+                Chào mừng bạn trở lại với Mộc Bản.
               </p>
             </div>
 

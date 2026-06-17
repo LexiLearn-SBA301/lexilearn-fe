@@ -19,7 +19,7 @@ export const LibraryPage = () => {
     periods: [],
   })
   const [activeTag, setActiveTag] = useState('')
-  const [sortBy, setSortBy] = useState('view_count,desc')
+  const [sortBy, setSortBy] = useState('viewCount,desc')
 
   // Gọi API
   const { data: tags } = useTags()
