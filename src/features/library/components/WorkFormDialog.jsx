@@ -30,7 +30,7 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
         reset({
           title: workData.title || '',
           authorId: workData.author?.id || workData.authorId || '',
-          publicationYear: workData.publishYear || '',
+          publishYear: workData.publishYear || '',
           genre: workData.genre || 'Truyện ngắn',
           // Hứng thêm 2 trường này từ data cũ lên
           period: workData.period || 'hien_dai',
@@ -38,6 +38,16 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
             workData.isPublished !== undefined ? workData.isPublished : true,
           summary: workData.summary || '',
           coverUrl: workData.coverUrl || '',
+          originalTitle: workData.originalTitle || '',
+          subGenre: workData.subGenre || '',
+          grade: workData.grade || '',
+          semester: workData.semester || '',
+          historicalContext: workData.historicalContext || '',
+          realisticValue: workData.realisticValue || '',
+          humanisticValue: workData.humanisticValue || '',
+          artisticValue: workData.artisticValue || '',
+          famousQuote: workData.famousQuote || '',
+          quoteAttribution: workData.quoteAttribution || '',
         })
       } else {
         reset(defaultWorkValues)
@@ -49,9 +59,10 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
     try {
       const payload = {
         ...data,
-        publishYear: data.publicationYear ? Number(data.publicationYear) : null,
+        publishYear: data.publishYear ? Number(data.publishYear) : null,
+        grade: data.grade ? Number(data.grade) : null,
+        semester: data.semester ? Number(data.semester) : null,
       }
-      delete payload.publicationYear
 
       if (isEditMode) {
         await updateMutation.mutateAsync({ id: workData.id, data: payload })
@@ -96,15 +107,15 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
             onSubmit={handleSubmit(onSubmit)}
             className="space-y-6"
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2 md:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Thông tin cơ bản */}
+              <div className="space-y-2">
                 <label className="text-sm font-bold text-primary">
                   Tên tác phẩm
                 </label>
                 <input
                   {...register('title')}
-                  className={`w-full bg-white border ${errors.title ? 'border-[#ab3429]' : 'border-outline-variant/40'} text-primary rounded-xl px-4 py-3`}
-                  placeholder="VD: Chí Phèo, Truyện Kiều..."
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
                 />
                 {errors.title && (
                   <p className="text-xs text-[#ab3429]">
@@ -115,17 +126,26 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
 
               <div className="space-y-2">
                 <label className="text-sm font-bold text-primary">
+                  Tên gốc (nếu có)
+                </label>
+                <input
+                  {...register('originalTitle')}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-primary">
                   Tác giả
                 </label>
                 <select
                   {...register('authorId')}
-                  className={`w-full bg-white border ${errors.authorId ? 'border-[#ab3429]' : 'border-outline-variant/40'} text-primary rounded-xl px-4 py-3`}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
                 >
                   <option value="">-- Chọn tác giả --</option>
                   {authorsData?.content?.map((author) => (
                     <option key={author.id} value={author.id}>
-                      {author.name}{' '}
-                      {author.penName ? `(${author.penName})` : ''}
+                      {author.name}
                     </option>
                   ))}
                 </select>
@@ -142,96 +162,171 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
                 </label>
                 <input
                   type="number"
-                  min="1"
                   onKeyDown={blockInvalidChar}
-                  {...register('publicationYear')}
-                  className={`w-full bg-white border ${errors.publicationYear ? 'border-[#ab3429]' : 'border-outline-variant/40'} text-primary rounded-xl px-4 py-3`}
-                  placeholder="VD: 1941"
+                  {...register('publishYear')}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
                 />
-                {errors.publicationYear && (
-                  <p className="text-xs text-[#ab3429]">
-                    {errors.publicationYear.message}
-                  </p>
-                )}
               </div>
 
-              {/* ── THÊM Ô THỂ LOẠI VÀ THỜI KỲ ── */}
               <div className="space-y-2">
                 <label className="text-sm font-bold text-primary">
-                  Thể loại
+                  Thể loại chính
                 </label>
                 <select
                   {...register('genre')}
-                  className="w-full bg-white border border-outline-variant/40 text-primary rounded-xl px-4 py-3"
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
                 >
                   <option value="Truyện ngắn">Truyện ngắn</option>
                   <option value="Tiểu thuyết">Tiểu thuyết</option>
                   <option value="Thơ ca">Thơ ca</option>
-                  <option value="Ký sự">Ký sự</option>
-                  <option value="Phê bình văn học">Phê bình văn học</option>
                 </select>
               </div>
 
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-primary">
+                  Thể loại phụ
+                </label>
+                <input
+                  {...register('subGenre')}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
+                />
+              </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-primary">
                   Thời kỳ văn học
                 </label>
                 <select
                   {...register('period')}
-                  className="w-full bg-white border border-outline-variant/40 text-primary rounded-xl px-4 py-3"
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
                 >
                   <option value="dan_gian">Văn học dân gian</option>
                   <option value="trung_dai">Văn học trung đại</option>
                   <option value="hien_dai">Văn học hiện đại</option>
                 </select>
               </div>
-
-              <div className="space-y-2 md:col-span-2">
+              <div className="space-y-2">
                 <label className="text-sm font-bold text-primary">
-                  Đường dẫn ảnh bìa (URL)
+                  Khối lớp (1-12)
                 </label>
                 <input
-                  {...register('coverUrl')}
-                  className={`w-full bg-white border ${errors.coverUrl ? 'border-[#ab3429]' : 'border-outline-variant/40'} text-primary rounded-xl px-4 py-3`}
-                  placeholder="https://..."
+                  type="number"
+                  {...register('grade')}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
                 />
-                {errors.coverUrl && (
-                  <p className="text-xs text-[#ab3429]">
-                    {errors.coverUrl.message}
-                  </p>
-                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-primary">
+                  Học kỳ (1-2)
+                </label>
+                <input
+                  type="number"
+                  {...register('semester')}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
+                />
               </div>
 
               <div className="space-y-2 md:col-span-2">
                 <label className="text-sm font-bold text-primary">
-                  Tóm tắt nội dung
+                  Tóm tắt
                 </label>
                 <textarea
                   {...register('summary')}
-                  rows={4}
-                  className={`w-full bg-white border ${errors.summary ? 'border-[#ab3429]' : 'border-outline-variant/40'} text-primary rounded-xl px-4 py-3 custom-scrollbar`}
-                  placeholder="Nhập đoạn tóm tắt tác phẩm..."
-                ></textarea>
-                {errors.summary && (
-                  <p className="text-xs text-[#ab3429]">
-                    {errors.summary.message}
-                  </p>
-                )}
+                  rows={3}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3 custom-scrollbar"
+                />
               </div>
 
-              {/* ── THÊM CHECKBOX IS_PUBLISHED ── */}
+              {/* Phân tích chuyên sâu */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-primary">
+                  Hoàn cảnh sáng tác
+                </label>
+                <textarea
+                  {...register('historicalContext')}
+                  rows={2}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-primary">
+                  Giá trị nghệ thuật
+                </label>
+                <textarea
+                  {...register('artisticValue')}
+                  rows={2}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-primary">
+                  Giá trị hiện thực
+                </label>
+                <textarea
+                  {...register('realisticValue')}
+                  rows={2}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-primary">
+                  Giá trị nhân đạo
+                </label>
+                <textarea
+                  {...register('humanisticValue')}
+                  rows={2}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
+                />
+              </div>
+
+              {/* Trích dẫn & Ảnh bìa */}
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-primary">
+                  Trích dẫn nổi tiếng
+                </label>
+                <textarea
+                  {...register('famousQuote')}
+                  rows={2}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-bold text-primary">
+                  Nguồn trích dẫn
+                </label>
+                <input
+                  {...register('quoteAttribution')}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
+                />
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-bold text-primary">
+                  URL Ảnh bìa
+                </label>
+                <input
+                  {...register('coverUrl')}
+                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
+                />
+              </div>
+
+              {/* Checkbox xuất bản */}
               <div className="md:col-span-2 flex items-center gap-3 p-4 bg-surface-container rounded-xl border border-outline-variant/30">
                 <input
                   type="checkbox"
                   id="isPublished"
                   {...register('isPublished')}
-                  className="w-5 h-5 rounded border-outline-variant/40 text-[#ab3429] focus:ring-[#ab3429] cursor-pointer"
+                  className="w-5 h-5 text-[#ab3429]"
                 />
                 <label
                   htmlFor="isPublished"
-                  className="text-sm font-bold text-primary cursor-pointer select-none"
+                  className="text-sm font-bold text-primary cursor-pointer"
                 >
-                  Xuất bản tác phẩm này (Hiển thị công khai trên Thư viện)
+                  Xuất bản tác phẩm này
                 </label>
               </div>
             </div>
