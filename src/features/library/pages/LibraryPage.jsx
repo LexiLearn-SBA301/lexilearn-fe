@@ -37,10 +37,10 @@ export const LibraryPage = () => {
 
   // DATA CỨNG CHO SIDEBAR
   const genres = [
-    { label: 'Truyện ngắn', value: 'truyen_ngan', icon: BookOpen },
-    { label: 'Thơ ca', value: 'tho_ca', icon: Feather },
-    { label: 'Kịch bản', value: 'kich_ban', icon: ScrollText },
-    { label: 'Khảo cứu', value: 'khao_cuu', icon: LibraryBig },
+    { label: 'Truyện ngắn', value: 'Truyện ngắn', icon: BookOpen },
+    { label: 'Thơ ca', value: 'Thơ ca', icon: Feather },
+    { label: 'Kịch bản', value: 'Kịch bản', icon: ScrollText },
+    { label: 'Khảo cứu', value: 'Khảo cứu', icon: LibraryBig },
   ]
 
   const periods = [

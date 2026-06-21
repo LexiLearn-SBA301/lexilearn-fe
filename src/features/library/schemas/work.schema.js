@@ -11,7 +11,7 @@ export const workSchema = z.object({
 
   authorId: z.string().min(1, 'Vui lòng chọn tác giả'),
 
-  publicationYear: z.preprocess(
+  publishYear: z.preprocess(
     (val) => (val === '' || val === null ? null : Number(val)),
     z
       .number()
@@ -52,15 +52,42 @@ export const workSchema = z.object({
         .max(500, 'Đường dẫn quá dài'),
     ])
     .optional(),
+  originalTitle: z.string().trim().optional().or(z.literal('')),
+  subGenre: z.string().trim().optional().or(z.literal('')),
+  grade: z.preprocess(
+    (val) => (val === '' || val === null ? null : Number(val)),
+    z.number().min(1).max(12).nullable().optional(),
+  ),
+  semester: z.preprocess(
+    (val) => (val === '' || val === null ? null : Number(val)),
+    z.number().min(1).max(2).nullable().optional(),
+  ),
+
+  historicalContext: z.string().trim().optional().or(z.literal('')),
+  realisticValue: z.string().trim().optional().or(z.literal('')),
+  humanisticValue: z.string().trim().optional().or(z.literal('')),
+  artisticValue: z.string().trim().optional().or(z.literal('')),
+  famousQuote: z.string().trim().optional().or(z.literal('')),
+  quoteAttribution: z.string().trim().optional().or(z.literal('')),
 })
 
 export const defaultWorkValues = {
   title: '',
   authorId: '',
-  publicationYear: '',
+  publishYear: '',
   genre: 'Truyện ngắn',
   period: 'hien_dai', // Thêm giá trị mặc định
   isPublished: true, // Thêm giá trị mặc định
   summary: '',
   coverUrl: '',
+  originalTitle: '',
+  subGenre: '',
+  grade: '',
+  semester: '',
+  historicalContext: '',
+  realisticValue: '',
+  humanisticValue: '',
+  artisticValue: '',
+  famousQuote: '',
+  quoteAttribution: '',
 }
