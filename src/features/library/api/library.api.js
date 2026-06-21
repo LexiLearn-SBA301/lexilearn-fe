@@ -12,6 +12,11 @@ export const fetchWorkDetail = async (slug) => {
   const response = await apiClient.get(`/v1/works/${slug}`)
   return response.data.result
 }
+
+// ==========================================
+// ADMIN APIS
+// ==========================================
+
 export const createWork = async (data) => {
   const response = await apiClient.post('/v1/admin/works', data)
   return response.data.result

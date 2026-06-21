@@ -101,9 +101,18 @@ export const WorkDetailPage = () => {
             </p>
 
             <div className="flex gap-4">
-              <button className="bg-[#ab3429] text-white px-8 py-3.5 rounded-xl hover:bg-[#8a1c14] transition-all shadow-md font-bold flex items-center gap-2">
+              {/* ======================================================= */}
+              {/* PHẦN CODE ĐÃ SỬA BỞI THÀNH VIÊN C (UI Work Section)     */}
+              {/* Mục đích: Chuyển nút Đọc Ngay thành thẻ Link trỏ sang ReadingPage */}
+              <Link
+                to={`/thu-vien/${slug}/doc`}
+                className="bg-[#ab3429] text-white px-8 py-3.5 rounded-xl hover:bg-[#8a1c14] transition-all shadow-md font-bold flex items-center gap-2"
+              >
                 <BookOpen size={20} /> Đọc ngay
-              </button>
+              </Link>
+              {/* KẾT THÚC PHẦN CODE CỦA THÀNH VIÊN C                       */}
+              {/* ======================================================= */}
+
               <button className="bg-[#004943] text-white px-8 py-3.5 rounded-xl hover:bg-[#02504a] transition-all shadow-md font-bold flex items-center gap-2">
                 <Sparkles size={20} /> Hỏi chatbot
               </button>
