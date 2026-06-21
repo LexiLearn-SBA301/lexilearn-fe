@@ -70,11 +70,11 @@ export const WorkAdminPage = () => {
   }
 
   const genreMap = {
-    truyen_ngan: 'Truyện ngắn',
-    tieu_thuyet: 'Tiểu thuyết',
-    tho: 'Thơ',
-    ky_su: 'Ký sự',
-    phe_binh: 'Phê bình văn học',
+    'Truyện ngắn': 'Truyện ngắn',
+    'Tiểu thuyết': 'Tiểu thuyết',
+    'Thơ ca': 'Thơ ca',
+    'Ký sự': 'Ký sự',
+    'Phê bình văn học': 'Phê bình văn học',
   }
 
   return (
@@ -169,9 +169,9 @@ export const WorkAdminPage = () => {
                         work.genre ||
                         'Chưa phân loại'}
                     </span>
-                    {work.publicationYear && (
+                    {work.publishYear && (
                       <span className="px-2 py-1 bg-outline-variant/20 text-on-surface-variant text-[10px] font-bold rounded-md">
-                        NXB: {work.publicationYear}
+                        NXB: {work.publishYear}
                       </span>
                     )}
                   </div>

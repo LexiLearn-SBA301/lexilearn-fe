@@ -204,30 +204,6 @@ export const AuthorAdminPage = () => {
               <strong className="text-primary">"{authorToDelete?.name}"</strong>{' '}
               khỏi hệ thống?
             </p>
-            {isErrorOpen && (
-              <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-                <div className="bg-white w-full max-w-md rounded-[20px] shadow-2xl p-6 flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
-                  <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
-                    <AlertTriangle size={30} />
-                  </div>
-
-                  <h3 className="font-title text-2xl font-bold text-red-600 mb-2">
-                    Không thể xóa
-                  </h3>
-
-                  <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
-                    {errorMessage}
-                  </p>
-
-                  <button
-                    onClick={() => setIsErrorOpen(false)}
-                    className="w-full py-3 bg-[#ab3429] text-white rounded-xl font-bold hover:bg-[#8a1c14] transition-colors"
-                  >
-                    Đã hiểu
-                  </button>
-                </div>
-              </div>
-            )}
             <div className="flex gap-3 w-full">
               <button
                 onClick={() => setIsDeleteOpen(false)}
@@ -248,6 +224,30 @@ export const AuthorAdminPage = () => {
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {isErrorOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white w-full max-w-md rounded-[20px] shadow-2xl p-6 flex flex-col items-center text-center animate-in zoom-in-95 duration-200">
+            <div className="w-14 h-14 bg-red-100 text-red-600 rounded-full flex items-center justify-center mb-4">
+              <AlertTriangle size={30} />
+            </div>
+
+            <h3 className="font-title text-2xl font-bold text-red-600 mb-2">
+              Không thể xóa
+            </h3>
+
+            <p className="text-sm text-on-surface-variant mb-6 leading-relaxed">
+              {errorMessage}
+            </p>
+
+            <button
+              onClick={() => setIsErrorOpen(false)}
+              className="w-full py-3 bg-[#ab3429] text-white rounded-xl font-bold hover:bg-[#8a1c14] transition-colors"
+            >
+              Đã hiểu
+            </button>
           </div>
         </div>
       )}
