@@ -4,6 +4,7 @@ import { LibraryPage } from './features/library/pages/LibraryPage'
 import { WorkDetailPage } from './features/library/pages/WorkDetailPage'
 import { AuthorListPage } from './features/author/pages/AuthorListPage'
 import { AuthorDetailPage } from './features/author/pages/AuthorDetailPage'
+import { ReadingPage } from './features/library/pages/ReadingPage'
 
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
@@ -29,6 +30,11 @@ export default function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/thu-vien" element={<LibraryPage />} />
               <Route path="/thu-vien/:slug" element={<WorkDetailPage />} />
+              <Route path="/thu-vien/:slug/doc" element={<ReadingPage />} />
+              <Route
+                path="/thu-vien/:slug/doc/:sectionId"
+                element={<ReadingPage />}
+              />
               <Route path="/tac-gia" element={<AuthorListPage />} />
               <Route path="/tac-gia/:slug" element={<AuthorDetailPage />} />
               <Route path="/dang-nhap" element={<LoginPage />} />
