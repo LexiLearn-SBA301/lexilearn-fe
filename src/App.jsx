@@ -7,8 +7,8 @@ import { AuthorDetailPage } from './features/author/pages/AuthorDetailPage'
 import { ReadingPage } from './features/library/pages/ReadingPage'
 
 import { HomePage } from './pages/HomePage'
-import { LoginPage } from './pages/LoginPage'
-import { RegisterPage } from './pages/RegisterPage'
+import { LoginPage } from './features/auth/pages/LoginPage'
+import { RegisterPage } from './features/auth/pages/RegisterPage'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
 
