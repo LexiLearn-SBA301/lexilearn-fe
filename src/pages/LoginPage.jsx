@@ -1,9 +1,27 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
+import { loginSchema, defaultLoginValues } from '../schemas/auth.schema'
 
 export const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false)
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(loginSchema),
+    defaultValues: defaultLoginValues,
+    mode: 'onChange', // Validate realtime (gõ tới đâu bắt lỗi tới đó)
+  })
+
+  const onSubmit = (data) => {
+    // TODO: wire to auth API khi backend đăng nhập sẵn sàng
+    console.log('Login submit:', data)
+  }
 
   return (
     <main className="paper-texture flex items-center justify-center p-6 md:px-20 md:py-6 relative z-10 min-h-[calc(100svh-5rem)]">
@@ -39,7 +57,11 @@ export const LoginPage = () => {
               </p>
             </div>
 
-            <form className="space-y-5">
+            <form
+              className="space-y-5"
+              onSubmit={handleSubmit(onSubmit)}
+              noValidate
+            >
               {/* Email/Username */}
               <div>
                 <label
@@ -54,13 +76,18 @@ export const LoginPage = () => {
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-outline"
                   />
                   <input
-                    className="w-full pl-10 pr-4 py-3 bg-surface border border-outline-variant rounded-xl focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-colors font-body text-base text-on-surface placeholder:text-outline-variant"
+                    className={`w-full pl-10 pr-4 py-3 bg-surface border ${errors.email ? 'border-[#ab3429]' : 'border-outline-variant'} rounded-xl focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-colors font-body text-base text-on-surface placeholder:text-outline-variant`}
                     id="email"
-                    name="email"
                     placeholder="ví dụ: nguyenvan@gmail.com"
                     type="text"
+                    {...register('email')}
                   />
                 </div>
+                {errors.email && (
+                  <p className="mt-1.5 text-xs text-[#ab3429] font-medium">
+                    {errors.email.message}
+                  </p>
+                )}
               </div>
 
               {/* Password */}
@@ -85,11 +112,11 @@ export const LoginPage = () => {
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-outline"
                   />
                   <input
-                    className="w-full pl-10 pr-12 py-3 bg-surface border border-outline-variant rounded-xl focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-colors font-body text-base text-on-surface placeholder:text-outline-variant"
+                    className={`w-full pl-10 pr-12 py-3 bg-surface border ${errors.password ? 'border-[#ab3429]' : 'border-outline-variant'} rounded-xl focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-colors font-body text-base text-on-surface placeholder:text-outline-variant`}
                     id="password"
-                    name="password"
                     placeholder="••••••••"
                     type={showPassword ? 'text' : 'password'}
+                    {...register('password')}
                   />
                   <button
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors focus:outline-none"
@@ -99,6 +126,11 @@ export const LoginPage = () => {
                     {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                   </button>
                 </div>
+                {errors.password && (
+                  <p className="mt-1.5 text-xs text-[#ab3429] font-medium">
+                    {errors.password.message}
+                  </p>
+                )}
               </div>
 
               {/* Remember Me */}
@@ -106,8 +138,8 @@ export const LoginPage = () => {
                 <input
                   className="h-4 w-4 rounded border-outline-variant text-secondary focus:ring-secondary/30 bg-surface transition-colors cursor-pointer"
                   id="remember-me"
-                  name="remember-me"
                   type="checkbox"
+                  {...register('rememberMe')}
                 />
                 <label
                   className="ml-2 block font-body text-base text-on-surface-variant cursor-pointer"
@@ -119,8 +151,9 @@ export const LoginPage = () => {
 
               {/* Submit Button */}
               <button
-                className="w-full py-3 px-4 bg-gradient-to-r from-secondary to-secondary-container text-on-secondary font-body text-[15px] font-semibold tracking-wide rounded-xl hover:shadow-[0_8px_16px_rgba(171,52,41,0.2)] hover:-translate-y-0.5 transition-all duration-200 flex justify-center items-center gap-2"
+                className="w-full py-3 px-4 bg-gradient-to-r from-secondary to-secondary-container text-on-secondary font-body text-[15px] font-semibold tracking-wide rounded-xl hover:shadow-[0_8px_16px_rgba(171,52,41,0.2)] hover:-translate-y-0.5 transition-all duration-200 flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
                 type="submit"
+                disabled={isSubmitting}
               >
                 <span>Đăng nhập</span>
                 <ArrowRight size={20} />
