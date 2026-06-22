@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import {
   User,
   Mail,
@@ -9,9 +11,27 @@ import {
   EyeOff,
   ArrowRight,
 } from 'lucide-react'
+import { registerSchema, defaultRegisterValues } from '../schemas/auth.schema'
 
 export const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false)
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm({
+    resolver: zodResolver(registerSchema),
+    defaultValues: defaultRegisterValues,
+    mode: 'onChange', // Validate realtime (gõ tới đâu bắt lỗi tới đó)
+  })
+
+  const onSubmit = (data) => {
+    // BE RegisterRequest chỉ nhận { email, password }
+    const payload = { email: data.email, password: data.password }
+    // TODO: wire to auth API (POST /api/v1/auth/register)
+    console.log('Register submit:', payload)
+  }
 
   return (
     <main className="bg-pattern-dots flex items-center justify-center p-4 md:px-8 md:py-4 min-h-[calc(100svh-5rem)]">
@@ -59,7 +79,11 @@ export const RegisterPage = () => {
             </p>
           </div>
 
-          <form className="space-y-2.5" onSubmit={(e) => e.preventDefault()}>
+          <form
+            className="space-y-2.5"
+            onSubmit={handleSubmit(onSubmit)}
+            noValidate
+          >
             {/* Họ và tên */}
             <div>
               <label
@@ -73,12 +97,18 @@ export const RegisterPage = () => {
                   <User size={20} />
                 </span>
                 <input
-                  className="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base"
+                  className={`w-full pl-10 pr-4 py-2 bg-surface-container-lowest border ${errors.fullName ? 'border-[#ab3429]' : 'border-outline-variant'} rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base`}
                   id="fullname"
                   placeholder="Nguyễn Văn A"
                   type="text"
+                  {...register('fullName')}
                 />
               </div>
+              {errors.fullName && (
+                <p className="mt-1 text-xs text-[#ab3429] font-medium">
+                  {errors.fullName.message}
+                </p>
+              )}
             </div>
 
             {/* Email */}
@@ -94,12 +124,18 @@ export const RegisterPage = () => {
                   <Mail size={20} />
                 </span>
                 <input
-                  className="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base"
+                  className={`w-full pl-10 pr-4 py-2 bg-surface-container-lowest border ${errors.email ? 'border-[#ab3429]' : 'border-outline-variant'} rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base`}
                   id="email"
                   placeholder="email@domain.com"
                   type="email"
+                  {...register('email')}
                 />
               </div>
+              {errors.email && (
+                <p className="mt-1 text-xs text-[#ab3429] font-medium">
+                  {errors.email.message}
+                </p>
+              )}
             </div>
 
             {/* Mật khẩu */}
@@ -115,10 +151,11 @@ export const RegisterPage = () => {
                   <Lock size={20} />
                 </span>
                 <input
-                  className="w-full pl-10 pr-12 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base"
+                  className={`w-full pl-10 pr-12 py-2 bg-surface-container-lowest border ${errors.password ? 'border-[#ab3429]' : 'border-outline-variant'} rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base`}
                   id="password"
                   placeholder="••••••••"
                   type={showPassword ? 'text' : 'password'}
+                  {...register('password')}
                 />
                 <button
                   className="absolute inset-y-0 right-0 pr-3 flex items-center text-outline hover:text-primary transition-colors"
@@ -129,6 +166,11 @@ export const RegisterPage = () => {
                   {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                 </button>
               </div>
+              {errors.password && (
+                <p className="mt-1 text-xs text-[#ab3429] font-medium">
+                  {errors.password.message}
+                </p>
+              )}
             </div>
 
             {/* Xác nhận mật khẩu */}
@@ -144,18 +186,25 @@ export const RegisterPage = () => {
                   <KeyRound size={20} />
                 </span>
                 <input
-                  className="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base"
+                  className={`w-full pl-10 pr-4 py-2 bg-surface-container-lowest border ${errors.confirmPassword ? 'border-[#ab3429]' : 'border-outline-variant'} rounded-lg text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary/30 focus:border-secondary transition-all placeholder:text-outline-variant font-body text-base`}
                   id="confirm_password"
                   placeholder="••••••••"
                   type="password"
+                  {...register('confirmPassword')}
                 />
               </div>
+              {errors.confirmPassword && (
+                <p className="mt-1 text-xs text-[#ab3429] font-medium">
+                  {errors.confirmPassword.message}
+                </p>
+              )}
             </div>
 
             {/* Submit Button */}
             <button
-              className="w-full mt-4 py-2.5 px-4 bg-gradient-to-r from-secondary to-secondary-container text-white font-body text-[15px] font-semibold tracking-wide rounded-lg shadow-[0_4px_14px_rgba(171,52,41,0.25)] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 flex justify-center items-center gap-2"
+              className="w-full mt-4 py-2.5 px-4 bg-gradient-to-r from-secondary to-secondary-container text-white font-body text-[15px] font-semibold tracking-wide rounded-lg shadow-[0_4px_14px_rgba(171,52,41,0.25)] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
               type="submit"
+              disabled={isSubmitting}
             >
               Đăng ký
               <ArrowRight size={18} />
