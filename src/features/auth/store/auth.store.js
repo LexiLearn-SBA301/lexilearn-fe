@@ -12,13 +12,19 @@ export const useAuthStore = create(
       accessToken: null,
       // Token làm mới, dùng để xin cấp lại accessToken khi hết hạn
       refreshToken: null,
+      // Thông tin người dùng hiện tại (UserResponse từ /v1/auth/me), null nếu chưa đăng nhập
+      user: null,
 
       // Lưu cặp token sau khi đăng nhập thành công
       setTokens: ({ accessToken, refreshToken }) =>
         set({ accessToken, refreshToken }),
 
-      // Xóa token khi đăng xuất
-      clearTokens: () => set({ accessToken: null, refreshToken: null }),
+      // Lưu thông tin người dùng sau khi lấy từ /v1/auth/me
+      setUser: (user) => set({ user }),
+
+      // Xóa token và thông tin người dùng khi đăng xuất
+      clearTokens: () =>
+        set({ accessToken: null, refreshToken: null, user: null }),
     }),
     {
       // Key dùng để lưu vào localStorage — interceptor trong api.js đọc cùng key này
