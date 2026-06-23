@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -12,14 +12,20 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { registerSchema, defaultRegisterValues } from '../schemas/auth.schema'
+import { useRegister } from '../hooks/useAuth'
 
 export const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false)
+  const navigate = useNavigate()
+
+  // Hook mutation đăng ký — isPending/isError/error dùng để điều khiển UI
+  // onSuccess được truyền per-call (trong onSubmit) để capture email từ form closure
+  const { mutate: registerUser, isPending, isError, error } = useRegister()
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm({
     resolver: zodResolver(registerSchema),
     defaultValues: defaultRegisterValues,
@@ -28,10 +34,22 @@ export const RegisterPage = () => {
 
   const onSubmit = (data) => {
     // BE RegisterRequest chỉ nhận { email, password }
-    const payload = { email: data.email, password: data.password }
-    // TODO: wire to auth API (POST /api/v1/auth/register)
-    console.log('Register submit:', payload)
+    // fullName và confirmPassword chỉ dùng để validate phía client, không gửi lên BE
+    registerUser(
+      { email: data.email, password: data.password },
+      {
+        // Truyền email qua location.state vì API response không chứa email (ApiResponse<Void>)
+        // VerifyOtpPage sẽ đọc email từ state để prefill và hiển thị hướng dẫn
+        onSuccess: () =>
+          navigate('/xac-thuc-otp', { state: { email: data.email } }),
+      },
+    )
   }
+
+  // Lấy message lỗi từ BE (ApiResponse.message) hoặc fallback nếu không có response
+  const serverErrorMessage = isError
+    ? (error?.response?.data?.message ?? 'Có lỗi xảy ra, vui lòng thử lại.')
+    : null
 
   return (
     <main className="bg-pattern-dots flex items-center justify-center p-4 md:px-8 md:py-4 min-h-[calc(100svh-5rem)]">
@@ -84,6 +102,15 @@ export const RegisterPage = () => {
             onSubmit={handleSubmit(onSubmit)}
             noValidate
           >
+            {/* Thông báo lỗi từ server (BE) — chỉ hiển thị khi có lỗi */}
+            {serverErrorMessage && (
+              <div className="px-4 py-3 rounded-xl bg-[#ab3429]/10 border border-[#ab3429]/30">
+                <p className="text-sm text-[#ab3429] font-medium">
+                  {serverErrorMessage}
+                </p>
+              </div>
+            )}
+
             {/* Họ và tên */}
             <div>
               <label
@@ -200,13 +227,13 @@ export const RegisterPage = () => {
               )}
             </div>
 
-            {/* Submit Button */}
+            {/* Submit Button — disable khi mutation đang chờ response */}
             <button
               className="w-full mt-4 py-2.5 px-4 bg-gradient-to-r from-secondary to-secondary-container text-white font-body text-[15px] font-semibold tracking-wide rounded-lg shadow-[0_4px_14px_rgba(171,52,41,0.25)] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
               type="submit"
-              disabled={isSubmitting}
+              disabled={isPending}
             >
-              Đăng ký
+              {isPending ? 'Đang đăng ký...' : 'Đăng ký'}
               <ArrowRight size={18} />
             </button>
           </form>
