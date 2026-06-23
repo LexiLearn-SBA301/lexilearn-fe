@@ -9,6 +9,9 @@ import { ReadingPage } from './features/library/pages/ReadingPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './features/auth/pages/LoginPage'
 import { RegisterPage } from './features/auth/pages/RegisterPage'
+import { VerifyOtpPage } from './features/auth/pages/VerifyOtpPage'
+import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage'
+import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
 
@@ -39,6 +42,11 @@ export default function App() {
               <Route path="/tac-gia/:slug" element={<AuthorDetailPage />} />
               <Route path="/dang-nhap" element={<LoginPage />} />
               <Route path="/dang-ky" element={<RegisterPage />} />
+              {/* Trang xác thực OTP — điều hướng từ RegisterPage kèm email qua location.state */}
+              <Route path="/xac-thuc-otp" element={<VerifyOtpPage />} />
+              {/* Luồng quên mật khẩu: nhập email → nhận OTP → đặt lại */}
+              <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
+              <Route path="/dat-lai-mat-khau" element={<ResetPasswordPage />} />
               {/* --- ADMIN ROUTES --- */}
               {/* Tạm thời để mở để dev, sau này team làm Auth thì bọc <ProtectedRoute> vào đây */}
               <Route path="/admin/tac-gia" element={<AuthorAdminPage />} />

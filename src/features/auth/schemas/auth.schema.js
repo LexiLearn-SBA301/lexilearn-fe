@@ -61,3 +61,89 @@ export const defaultRegisterValues = {
   password: '',
   confirmPassword: '',
 }
+
+// Schema khớp với BE: VerifyOtpRequest.java
+// - email: @NotBlank + @Email + @Size(max = 255)
+// - otp: @NotBlank + chỉ gồm digit + đúng 6 ký tự (app.otp.length=6)
+export const verifyOtpSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, 'Email không được để trống')
+    .email('Email không hợp lệ')
+    .max(255, 'Email tối đa 255 ký tự'),
+
+  otp: z
+    .string()
+    .trim()
+    .min(1, 'Mã OTP không được để trống')
+    .regex(/^\d+$/, 'Mã OTP chỉ gồm chữ số')
+    .length(6, 'Mã OTP gồm 6 chữ số'),
+})
+
+export const defaultVerifyOtpValues = {
+  email: '',
+  otp: '',
+}
+
+// Schema khớp với BE: ForgotPasswordRequest.java
+// - email: @NotBlank + @Email + @Size(max = 255)
+// BE luôn trả 200 dù email có tồn tại hay không (chống dò email)
+export const forgotPasswordSchema = z.object({
+  email: z
+    .string()
+    .trim()
+    .min(1, 'Email không được để trống')
+    .email('Email không hợp lệ')
+    .max(255, 'Email tối đa 255 ký tự'),
+})
+
+export const defaultForgotPasswordValues = {
+  email: '',
+}
+
+// Schema khớp với BE: ResetPasswordRequest.java
+// - email: @NotBlank + @Email + @Size(max = 255)
+// - otp: @NotBlank + chỉ gồm digit + đúng 6 ký tự
+// - newPassword: @NotBlank + @Size(min=8, max=64) + regex ^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$
+//   (NGHIÊM hơn register: bắt buộc có chữ hoa, chữ thường VÀ chữ số)
+// Lưu ý: confirmPassword chỉ validate phía client, KHÔNG gửi lên BE
+export const resetPasswordSchema = z
+  .object({
+    email: z
+      .string()
+      .trim()
+      .min(1, 'Email không được để trống')
+      .email('Email không hợp lệ')
+      .max(255, 'Email tối đa 255 ký tự'),
+
+    otp: z
+      .string()
+      .trim()
+      .min(1, 'Mã OTP không được để trống')
+      .regex(/^\d+$/, 'Mã OTP chỉ gồm chữ số')
+      .length(6, 'Mã OTP gồm 6 chữ số'),
+
+    newPassword: z
+      .string()
+      .min(1, 'Mật khẩu mới không được để trống')
+      .min(8, 'Mật khẩu phải từ 8 đến 64 ký tự')
+      .max(64, 'Mật khẩu phải từ 8 đến 64 ký tự')
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/,
+        'Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 chữ số',
+      ),
+
+    confirmPassword: z.string().min(1, 'Vui lòng xác nhận mật khẩu mới'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Mật khẩu xác nhận không khớp',
+    path: ['confirmPassword'], // Focus lỗi vào ô xác nhận mật khẩu
+  })
+
+export const defaultResetPasswordValues = {
+  email: '',
+  otp: '',
+  newPassword: '',
+  confirmPassword: '',
+}
