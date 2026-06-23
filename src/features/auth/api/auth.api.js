@@ -55,3 +55,13 @@ export const resetPasswordApi = async ({ email, otp, newPassword }) => {
   })
   return response.data
 }
+
+// Gọi API lấy thông tin người dùng hiện tại, trả về UserResponse
+// BE: GET /v1/auth/me → ApiResponse<UserResponse>
+// UserResponse gồm: id, email, status, roles (mảng string), emailVerifiedAt, createdAt
+// Token được tự động gắn vào header Authorization bởi interceptor trong api.js
+export const getMeApi = async () => {
+  const response = await apiClient.get('/v1/auth/me')
+  // response.data.result là UserResponse
+  return response.data.result
+}

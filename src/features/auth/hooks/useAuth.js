@@ -7,26 +7,43 @@ import {
   resendOtpApi,
   forgotPasswordApi,
   resetPasswordApi,
+  getMeApi,
 } from '../api/auth.api'
 import { useAuthStore } from '../store/auth.store'
+import { resolveHomeRoute } from '../utils/resolveHomeRoute'
 
 // Hook xử lý đăng nhập:
 // - Gọi loginApi khi mutate({ email, password })
-// - onSuccess: lưu token vào store rồi chuyển hướng về trang chủ
+// - onSuccess: lưu token, gọi /me lấy thông tin user, rồi điều hướng theo role
 export const useLogin = () => {
   const navigate = useNavigate()
   const setTokens = useAuthStore((state) => state.setTokens)
+  const setUser = useAuthStore((state) => state.setUser)
 
   return useMutation({
     mutationFn: loginApi,
-    onSuccess: (tokenResponse) => {
-      // Lưu accessToken và refreshToken vào zustand store (persist vào localStorage)
+    onSuccess: async (tokenResponse) => {
+      // Lưu accessToken và refreshToken vào zustand store (persist vào localStorage đồng bộ)
+      // Interceptor trong api.js đọc token từ localStorage tại thời điểm gọi request,
+      // nên sau khi setTokens() trả về, token đã có trong localStorage cho getMeApi()
       setTokens({
         accessToken: tokenResponse.accessToken,
         refreshToken: tokenResponse.refreshToken,
       })
-      // Chuyển về trang chủ sau khi đăng nhập thành công
-      navigate('/')
+
+      try {
+        // Lấy thông tin người dùng hiện tại từ /v1/auth/me (token đã được gắn tự động)
+        const user = await getMeApi()
+        // Lưu thông tin người dùng vào store
+        setUser(user)
+
+        // Điều hướng theo role
+        navigate(resolveHomeRoute(user.roles))
+      } catch (error) {
+        // Nếu /me thất bại, user vẫn đã đăng nhập (token đã lưu) — về trang chủ như bình thường
+        console.error('[useLogin] Không lấy được thông tin user từ /me:', error)
+        navigate('/')
+      }
     },
   })
 }
