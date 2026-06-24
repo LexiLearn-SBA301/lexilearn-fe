@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { fetchWorks } from '../features/library/api/library.api'
+import { fetchWorks } from '../services/library.service'
 import { useChatStore } from '../features/library/store/chat.store'
 import { Search, BookOpen, Sparkles, Loader2 } from 'lucide-react' // Đã bỏ Mic
 

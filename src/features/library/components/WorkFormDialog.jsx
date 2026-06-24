@@ -1,9 +1,14 @@
 import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { workSchema, defaultWorkValues } from '../schemas/work.schema'
+import {
+  workSchema,
+  defaultWorkValues,
+  currentYear,
+} from '../schemas/work.schema'
 import { useCreateWork, useUpdateWork } from '../hooks/useLibrary'
 import { useAuthors } from '../../author/hooks/useAuthor'
+import { useTags } from '../../tag/hooks/useTag'
 import { X, Loader2, Save } from 'lucide-react'
 
 export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
@@ -12,6 +17,7 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
   const updateMutation = useUpdateWork()
 
   const { data: authorsData } = useAuthors({ size: 1000 })
+  const { data: tagsData } = useTags({ size: 1000 })
 
   const {
     register,
@@ -32,7 +38,6 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
           authorId: workData.author?.id || workData.authorId || '',
           publishYear: workData.publishYear || '',
           genre: workData.genre || 'Truyện ngắn',
-          // Hứng thêm 2 trường này từ data cũ lên
           period: workData.period || 'hien_dai',
           isPublished:
             workData.isPublished !== undefined ? workData.isPublished : true,
@@ -48,6 +53,7 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
           artisticValue: workData.artisticValue || '',
           famousQuote: workData.famousQuote || '',
           quoteAttribution: workData.quoteAttribution || '',
+          tagIds: workData.tags?.map((t) => t.id) || workData.tagIds || [],
         })
       } else {
         reset(defaultWorkValues)
@@ -162,8 +168,10 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
                 </label>
                 <input
                   type="number"
+                  {...register('publishYear', { valueAsNumber: true })}
                   onKeyDown={blockInvalidChar}
-                  {...register('publishYear')}
+                  min="1000"
+                  max={currentYear}
                   className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
                 />
               </div>
@@ -191,6 +199,37 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
                   className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
                 />
               </div>
+              {/* Danh sách Bộ sưu tập (Tags) */}
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-sm font-bold text-primary">
+                  Bộ sưu tập (Thẻ)
+                </label>
+                <div className="flex flex-wrap gap-4 p-4 bg-surface-container rounded-xl border border-outline-variant/30 max-h-48 overflow-y-auto custom-scrollbar">
+                  {tagsData?.content?.map((tag) => (
+                    <label
+                      key={tag.id}
+                      className="flex items-center gap-2 cursor-pointer hover:bg-outline-variant/10 p-1.5 rounded-lg transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        value={tag.id}
+                        {...register('tagIds')}
+                        className="w-4 h-4 text-[#ab3429] rounded border-outline-variant focus:ring-[#ab3429]/30 cursor-pointer"
+                      />
+                      <span className="text-sm font-medium text-on-surface-variant">
+                        {tag.name}
+                      </span>
+                    </label>
+                  ))}
+
+                  {/* Báo lỗi nếu load tag rỗng */}
+                  {(!tagsData?.content || tagsData.content.length === 0) && (
+                    <span className="text-sm text-outline italic">
+                      Chưa có thẻ nào trong hệ thống.
+                    </span>
+                  )}
+                </div>
+              </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-primary">
                   Thời kỳ văn học
@@ -206,11 +245,14 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-bold text-primary">
-                  Khối lớp (1-12)
+                  Khối lớp (10-12)
                 </label>
                 <input
                   type="number"
-                  {...register('grade')}
+                  {...register('grade', { valueAsNumber: true })}
+                  onKeyDown={blockInvalidChar}
+                  min="10"
+                  max="12"
                   className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
                 />
               </div>
@@ -221,7 +263,10 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
                 </label>
                 <input
                   type="number"
-                  {...register('semester')}
+                  {...register('semester', { valueAsNumber: true })}
+                  onKeyDown={blockInvalidChar}
+                  min="1"
+                  max="2"
                   className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
                 />
               </div>

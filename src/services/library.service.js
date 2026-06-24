@@ -1,4 +1,4 @@
-import { apiClient } from '../../../lib/api'
+import { apiClient } from '../lib/api'
 
 export const fetchTags = async () => {
   const response = await apiClient.get('/v1/tags')
@@ -12,7 +12,6 @@ export const fetchWorkDetail = async (slug) => {
   const response = await apiClient.get(`/v1/works/${slug}`)
   return response.data.result
 }
-
 // ==========================================
 // ADMIN APIS
 // ==========================================

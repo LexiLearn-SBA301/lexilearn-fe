@@ -5,7 +5,7 @@ import {
   createAuthor,
   updateAuthor,
   deleteAuthor,
-} from '../api/author.api'
+} from '../../../services/author.service'
 export const useAuthors = (filters) => {
   return useQuery({
     queryKey: ['authors', filters],

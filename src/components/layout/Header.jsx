@@ -6,10 +6,12 @@ import { useChatStore } from '../../features/library/store/chat.store'
 
 export const Header = () => {
   const location = useLocation()
+  const isAdmin = location.pathname.startsWith('/admin')
   const navigate = useNavigate()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef(null)
+  const homeLink = isAdmin ? '/admin/thu-vien' : '/thu-vien'
 
   // Trạng thái đăng nhập: có accessToken nghĩa là đã đăng nhập
   const accessToken = useAuthStore((state) => state.accessToken)
@@ -54,47 +56,70 @@ export const Header = () => {
     <header
       className={`fixed top-0 w-full z-50 transition-all duration-500 ease-in-out ${
         isScrolled
-          ? 'h-16 bg-[#fff9ef]/90 backdrop-blur-xl shadow-md border-b border-outline-variant/10'
-          : 'h-20 bg-[#fff9ef]/80'
+          ? 'bg-[#fff9ef]/90 backdrop-blur-xl shadow-md border-b border-outline-variant/10'
+          : 'bg-[#fff9ef]/80'
       }`}
     >
-      <div className="flex justify-between items-center h-full px-6 max-w-7xl mx-auto">
+      <div className="flex justify-between items-center h-20 px-6 max-w-7xl mx-auto">
         {/* Brand */}
         <Link
-          to="/thu-vien"
-          className="font-title text-3xl font-bold text-primary transition-all duration-500"
+          to={homeLink}
+          className="font-title text-3xl font-bold text-primary"
         >
           Mộc Bản
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-10">
-          <Link
-            to="/"
-            className="text-on-surface-variant hover:text-secondary transition-colors font-semibold text-[15px]"
-          >
-            Trang chủ
-          </Link>
-          <Link
-            to="/thu-vien"
-            className={`font-semibold text-[15px] transition-colors ${isActive('/thu-vien') ? 'text-secondary border-b-2 border-secondary pb-1' : 'text-on-surface-variant hover:text-secondary'}`}
-          >
-            Thư viện
-          </Link>
-          <Link
-            to="/tac-gia"
-            className={`font-semibold text-[15px] transition-colors ${isActive('/tac-gia') ? 'text-secondary border-b-2 border-secondary pb-1' : 'text-on-surface-variant hover:text-secondary'}`}
-          >
-            Tác giả
-          </Link>
-          <button
-            onClick={() => openChat()}
-            className="text-on-surface-variant hover:text-secondary transition-colors font-semibold text-[15px] cursor-pointer"
-          >
-            Chatbot
-          </button>
-        </nav>
-
+        {/* 1. NẾU LÀ ADMIN, HIỆN THANH TAB Ở GIỮA HEADER */}
+        {isAdmin ? (
+          <nav className="flex items-center gap-2 bg-surface-container-lowest p-1 rounded-xl border border-outline-variant/20">
+            <Link
+              to="/admin/thu-vien"
+              className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${location.pathname.includes('/admin/thu-vien') ? 'bg-[#ab3429] text-white shadow-sm' : 'text-on-surface-variant hover:text-primary'}`}
+            >
+              Tác phẩm
+            </Link>
+            <Link
+              to="/admin/tac-gia"
+              className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${location.pathname.includes('/admin/tac-gia') ? 'bg-[#ab3429] text-white shadow-sm' : 'text-on-surface-variant hover:text-primary'}`}
+            >
+              Tác giả
+            </Link>
+            <Link
+              to="/admin/the"
+              className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${location.pathname.includes('/admin/the') ? 'bg-[#ab3429] text-white shadow-sm' : 'text-on-surface-variant hover:text-primary'}`}
+            >
+              Thẻ
+            </Link>
+          </nav>
+        ) : (
+          /* 2. NẾU LÀ USER THÌ HIỆN NAV CŨ */
+          <nav className="hidden md:flex items-center gap-10">
+            <Link
+              to="/"
+              className="text-on-surface-variant hover:text-secondary font-semibold text-[15px]"
+            >
+              Trang chủ
+            </Link>
+            <Link
+              to="/thu-vien"
+              className={`font-semibold text-[15px] ${isActive('/thu-vien') ? 'text-secondary border-b-2 border-secondary pb-1' : 'text-on-surface-variant'}`}
+            >
+              Thư viện
+            </Link>
+            <Link
+              to="/tac-gia"
+              className={`font-semibold text-[15px] ${isActive('/tac-gia') ? 'text-secondary border-b-2 border-secondary pb-1' : 'text-on-surface-variant'}`}
+            >
+              Tác giả
+            </Link>
+            <button
+              onClick={() => openChat()}
+              className="text-on-surface-variant hover:text-secondary transition-colors font-semibold text-[15px] cursor-pointer"
+            >
+              Chatbot
+            </button>
+          </nav>
+        )}
         {/* Actions */}
         <div className="flex items-center gap-4">
           <button className="text-on-surface-variant hover:text-primary p-2 rounded-full hover:bg-surface-container transition-colors">

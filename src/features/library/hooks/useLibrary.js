@@ -1,20 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  fetchTags,
   fetchWorks,
   fetchWorkDetail,
   createWork,
   updateWork,
   deleteWork,
-} from '../api/library.api'
-// Hook lấy danh sách Thẻ
-export const useTags = () => {
-  return useQuery({
-    queryKey: ['tags'],
-    queryFn: fetchTags,
-    staleTime: 1000 * 60 * 60, // Cache 1 tiếng vì Tags ít khi thay đổi
-  })
-}
+} from '../../../services/library.service'
 // Hook lấy danh sách Tác phẩm (Tự động fetch lại khi filters thay đổi)
 export const useWorks = (filters) => {
   return useQuery({
@@ -27,7 +18,7 @@ export const useWorkDetail = (slug) => {
   return useQuery({
     queryKey: ['work', slug],
     queryFn: () => fetchWorkDetail(slug),
-    enabled: !!slug, // Chỉ gọi API khi có slug
+    enabled: !!slug,
   })
 }
 // --- ADMIN HOOKS ---

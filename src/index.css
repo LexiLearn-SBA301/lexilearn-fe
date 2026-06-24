@@ -247,3 +247,6 @@ body {
     border-radius: 4px;
   }
 }
+html {
+  overflow-y: scroll; /* Ép luôn hiện thanh cuộn dọc mờ mờ để chống giật trang */
+}

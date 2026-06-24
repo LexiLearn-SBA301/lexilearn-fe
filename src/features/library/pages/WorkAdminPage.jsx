@@ -10,7 +10,7 @@ import {
 } from 'lucide-react'
 import { useWorks, useDeleteWork } from '../hooks/useLibrary'
 import { WorkFormDialog } from '../components/WorkFormDialog'
-import { fetchWorkDetail } from '../api/library.api'
+import { fetchWorkDetail } from '../../../services/library.service'
 
 export const WorkAdminPage = () => {
   const [searchQuery, setSearchQuery] = useState('')
@@ -18,7 +18,6 @@ export const WorkAdminPage = () => {
   const [editingWork, setEditingWork] = useState(null)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [workToDelete, setWorkToDelete] = useState(null)
-
   // State quản lý trạng thái loading khi bấm nút Sửa
   const [isFetchingDetail, setIsFetchingDetail] = useState(false)
 
@@ -83,7 +82,7 @@ export const WorkAdminPage = () => {
         {/* Tiêu đề */}
         <div className="mb-10">
           <h1 className="font-title text-4xl md:text-5xl font-bold text-primary mb-3">
-            Quản lý Tác phẩm
+            Quản lý tác phẩm
           </h1>
           <p className="text-on-surface-variant text-lg">
             Quản lý kho tàng văn học và di sản của các tác giả.

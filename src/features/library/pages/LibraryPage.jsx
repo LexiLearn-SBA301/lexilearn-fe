@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { useTags, useWorks } from '../hooks/useLibrary'
+import { useWorks } from '../hooks/useLibrary'
+import { useTags } from '../../tag/hooks/useTag'
 import { BookCard } from '../components/BookCard'
 import {
   Loader2,
@@ -19,28 +20,26 @@ export const LibraryPage = () => {
     periods: [],
   })
   const [activeTag, setActiveTag] = useState('')
-  const [sortBy, setSortBy] = useState('viewCount,desc')
-
+  const [currentPage, setCurrentPage] = useState(0)
   // Gọi API
-  const { data: tags } = useTags()
+  const { data: tags } = useTags({ size: 1000 })
   const { data: worksPage, isLoading: isLoadingWorks } = useWorks({
     genre: appliedFilters.genre || undefined,
     period:
       appliedFilters.periods.length > 0
         ? appliedFilters.periods.join(',')
         : undefined,
-    tag: activeTag || undefined,
-    sort: sortBy,
-    page: 0,
-    size: 24,
+    tag: activeTag || undefined, // Đảm bảo API Backend bác đang nhận param tên là "tag" nhé
+    // sort: sortBy,
+    page: currentPage,
+    size: 3,
   })
 
   // DATA CỨNG CHO SIDEBAR
   const genres = [
     { label: 'Truyện ngắn', value: 'Truyện ngắn', icon: BookOpen },
     { label: 'Thơ ca', value: 'Thơ ca', icon: Feather },
-    { label: 'Kịch bản', value: 'Kịch bản', icon: ScrollText },
-    { label: 'Khảo cứu', value: 'Khảo cứu', icon: LibraryBig },
+    { label: 'Tiểu thuyết', value: 'Tiểu thuyết', icon: ScrollText },
   ]
 
   const periods = [
@@ -51,6 +50,7 @@ export const LibraryPage = () => {
 
   // Hàm xóa filter bên sidebar
   const removeFilter = (type, value) => {
+    setCurrentPage(0)
     if (type === 'genre') {
       setTempGenre('')
       setAppliedFilters((prev) => ({ ...prev, genre: '' }))
@@ -60,11 +60,10 @@ export const LibraryPage = () => {
       setAppliedFilters((prev) => ({ ...prev, periods: newPeriods }))
     }
   }
-
   return (
-    <div className="bg-background min-h-screen flex px-6 max-w-7xl mx-auto py-8 gap-8">
+    <div className="bg-background min-h-screen flex px-6 w-full max-w-[1440px] mx-auto py-8 gap-10 lg:gap-12">
       {/* SIDEBAR BỘ LỌC */}
-      <aside className="w-[280px] flex-shrink-0">
+      <aside className="w-[280px] flex-shrink-0 sticky top-8 h-fit">
         <div className="mb-8">
           <h1 className="font-title text-4xl font-bold text-primary mb-2">
             Thư viện
@@ -129,9 +128,10 @@ export const LibraryPage = () => {
           </div>
 
           <button
-            onClick={() =>
+            onClick={() => {
               setAppliedFilters({ genre: tempGenre, periods: tempPeriods })
-            }
+              setCurrentPage(0)
+            }}
             className="w-full bg-[#EAECE6] text-primary py-3 rounded-xl font-bold hover:bg-[#d2d6ce] transition-colors shadow-sm"
           >
             Áp dụng bộ lọc
@@ -140,10 +140,10 @@ export const LibraryPage = () => {
       </aside>
 
       {/* CONTENT CHÍNH */}
-      <section className="flex-grow min-w-0 flex flex-col">
-        {/* THANH TOP: BREADCRUMB & SẮP XẾP */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          {/* Breadcrumbs lọc Sidebar */}
+      <section className="flex-[1_1_0%] min-w-0 flex flex-col w-full">
+        {/* THANH TOP: BREADCRUMB, BỘ SƯU TẬP & SẮP XẾP */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
+          {/* BÊN TRÁI: Breadcrumbs lọc Sidebar */}
           <div className="flex items-center gap-2 flex-wrap min-h-[32px]">
             <span className="text-sm text-on-surface-variant font-medium">
               Đang lọc theo:
@@ -179,56 +179,58 @@ export const LibraryPage = () => {
             })}
           </div>
 
-          {/* Dropdown Sắp xếp */}
-          <div className="flex items-center gap-2 bg-surface-container-lowest px-4 py-2 rounded-xl border border-outline-variant/30 shadow-sm">
-            <span className="text-xs font-medium text-on-surface-variant">
-              Sắp xếp:
-            </span>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="text-sm border-none bg-transparent font-bold text-primary focus:ring-0 cursor-pointer outline-none"
-            >
-              <option value="view_count,desc">Nổi bật nhất</option>
-              <option value="created_at,desc">Mới thêm gần đây</option>
-              <option value="title,asc">Tên (A-Z)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* BỘ SƯU TẬP (TAGS) - HIỂN THỊ DẠNG CHIPS */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 overflow-x-auto custom-scrollbar pb-2">
-            <button
-              onClick={() => setActiveTag('')}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
-                activeTag === ''
-                  ? 'bg-surface-container-lowest border-outline-variant shadow-sm text-primary'
-                  : 'bg-transparent border-transparent text-on-surface-variant hover:bg-surface-container-low'
-              }`}
-            >
-              Tất cả sách
-            </button>
-            {tags?.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTag(t.slug)}
-                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
-                  activeTag === t.slug
-                    ? 'bg-surface-container-lowest border-outline-variant shadow-sm text-primary'
-                    : 'bg-transparent border-transparent text-on-surface-variant hover:bg-surface-container-low'
-                }`}
+          {/* BÊN PHẢI: Nhóm Dropdown (Bộ sưu tập + Sắp xếp) */}
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Dropdown Bộ sưu tập */}
+            <div className="flex items-center gap-2 bg-surface-container-lowest px-4 py-2 rounded-xl border border-outline-variant/30 shadow-sm">
+              <span className="text-xs font-medium text-on-surface-variant whitespace-nowrap">
+                Bộ sưu tập:
+              </span>
+              <select
+                value={activeTag}
+                onChange={(e) => {
+                  setActiveTag(e.target.value)
+                  setCurrentPage(0)
+                }}
+                className="text-sm border-none bg-transparent font-bold text-primary focus:ring-0 cursor-pointer outline-none max-w-[140px] truncate"
               >
-                {t.name}
-              </button>
-            ))}
+                <option value="">Tất cả sách</option>
+
+                {/* Kiểm tra tags và tags.content trước khi map */}
+                {tags?.content && tags.content.length > 0 ? (
+                  tags.content.map((t) => (
+                    <option key={t.id} value={t.slug}>
+                      {t.name}
+                    </option>
+                  ))
+                ) : (
+                  <option disabled>Đang tải danh mục...</option>
+                )}
+              </select>
+            </div>
+
+            {/* Dropdown Sắp xếp
+            <div className="flex items-center gap-2 bg-surface-container-lowest px-4 py-2 rounded-xl border border-outline-variant/30 shadow-sm">
+              <span className="text-xs font-medium text-on-surface-variant whitespace-nowrap">
+                Sắp xếp:
+              </span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="text-sm border-none bg-transparent font-bold text-primary focus:ring-0 cursor-pointer outline-none"
+              >
+                <option value="viewCount,desc">Nổi bật nhất</option>
+                <option value="createdAt,desc">Mới thêm gần đây</option>
+                <option value="title,asc">Tên (A-Z)</option>
+              </select>
+            </div> */}
           </div>
         </div>
 
         {/* LƯỚI TÁC PHẨM */}
-        <div className="min-h-[600px] relative">
+        <div className="w-full flex flex-col flex-grow min-h-[calc(100vh-250px)]">
           {isLoadingWorks ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <div className="w-full flex flex-col items-center justify-center flex-grow py-20">
               <Loader2
                 className="animate-spin text-primary/60 mb-4"
                 size={36}
@@ -238,22 +240,60 @@ export const LibraryPage = () => {
               </p>
             </div>
           ) : worksPage?.content?.length === 0 ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/40 rounded-[24px] bg-surface-container-lowest/50">
+            <div className="w-full flex flex-col items-center justify-center flex-grow border-2 border-dashed border-outline-variant/40 rounded-[24px] bg-surface-container-lowest/50 mt-4 min-h-[400px]">
               <LibraryBig
                 className="text-outline-variant mb-4"
                 size={48}
                 strokeWidth={1}
               />
-              <p className="text-on-surface-variant font-medium">
+              <p className="text-on-surface-variant font-medium text-lg">
                 Không tìm thấy tác phẩm nào phù hợp.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {worksPage?.content?.map((w) => (
-                <BookCard key={w.id} work={w} />
-              ))}
-            </div>
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {worksPage?.content?.map((w) => (
+                  <BookCard key={w.id} work={w} />
+                ))}
+              </div>
+
+              {worksPage?.totalPages > 1 && (
+                <div className="mt-auto pt-12">
+                  <div className="flex justify-center items-center gap-6 mb-8 border-t border-outline-variant/30 pt-8">
+                    <button
+                      onClick={() => {
+                        setCurrentPage((prev) => prev - 1)
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                      }}
+                      disabled={worksPage.first}
+                      className="px-6 py-2.5 rounded-xl font-bold border border-[#004943]/20 text-[#004943] hover:bg-[#004943]/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                    >
+                      &larr; Trang trước
+                    </button>
+
+                    <div className="text-sm font-medium text-on-surface-variant bg-surface-container-lowest px-4 py-2 rounded-lg border border-outline-variant/20 shadow-sm">
+                      Trang{' '}
+                      <span className="font-bold text-primary">
+                        {worksPage.number + 1}
+                      </span>{' '}
+                      / {worksPage.totalPages}
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setCurrentPage((prev) => prev + 1)
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                      }}
+                      disabled={worksPage.last}
+                      className="px-6 py-2.5 rounded-xl font-bold border border-[#004943]/20 text-[#004943] hover:bg-[#004943]/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                    >
+                      Trang sau &rarr;
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
