@@ -13,7 +13,7 @@ import {
   createArtisticFeature,
   updateArtisticFeature,
   deleteArtisticFeature,
-} from '../api/workDetail.api'
+} from '../../../services/workDetail.service'
 
 // ============================================================================
 // 📖 PHẦN 1: USER HOOKS (Dành cho trang Đọc sách / Hiển thị)

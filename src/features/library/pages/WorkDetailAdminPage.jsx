@@ -11,7 +11,7 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useWorkDetail } from '../hooks/useLibrary'
-import { fetchWorkSectionDetail } from '../api/workDetail.api'
+import { fetchWorkSectionDetail } from '../../../services/workDetail.service'
 import {
   useGetSections,
   useGetCharacters,

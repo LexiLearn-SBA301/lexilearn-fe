@@ -1,4 +1,4 @@
-import { apiClient } from '../../../lib/api'
+import { apiClient } from '../lib/api'
 
 export const fetchAuthors = async (params) => {
   const response = await apiClient.get('/v1/authors', { params })
@@ -8,6 +8,10 @@ export const fetchAuthorDetail = async (slug) => {
   const response = await apiClient.get(`/v1/authors/${slug}`)
   return response.data.result
 }
+
+// ==========================================
+// ADMIN APIS
+// ==========================================
 export const createAuthor = async (data) => {
   const response = await apiClient.post('/v1/admin/authors', data)
   return response.data.result
