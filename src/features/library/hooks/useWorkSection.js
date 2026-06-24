@@ -1,10 +1,23 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   fetchWorkSections,
   fetchWorkSectionDetail,
   fetchWorkCharacters,
   fetchArtisticFeatures,
-} from '../api/workDetail.api'
+  createWorkSection,
+  updateWorkSection,
+  deleteWorkSection,
+  createWorkCharacter,
+  updateWorkCharacter,
+  deleteWorkCharacter,
+  createArtisticFeature,
+  updateArtisticFeature,
+  deleteArtisticFeature,
+} from '../../../services/workDetail.service'
+
+// ============================================================================
+// 📖 PHẦN 1: USER HOOKS (Dành cho trang Đọc sách / Hiển thị)
+// ============================================================================
 
 // Hook lấy danh sách mục lục (Menu Sidebar)
 export const useGetSections = (workId) => {
@@ -16,11 +29,11 @@ export const useGetSections = (workId) => {
 }
 
 // Hook lấy chi tiết text để đọc (Main Content)
-export const useGetSectionDetail = (sectionId) => {
+export const useGetSectionDetail = (workId, sectionId) => {
   return useQuery({
-    queryKey: ['section', sectionId],
-    queryFn: () => fetchWorkSectionDetail(sectionId),
-    enabled: !!sectionId, // Chỉ chạy khi có ID
+    queryKey: ['section', workId, sectionId],
+    queryFn: () => fetchWorkSectionDetail(workId, sectionId),
+    enabled: !!workId && !!sectionId, // Chỉ chạy khi có đủ ID
   })
 }
 
@@ -39,5 +52,111 @@ export const useGetArtisticFeatures = (workId) => {
     queryKey: ['artisticFeatures', workId],
     queryFn: () => fetchArtisticFeatures(workId),
     enabled: !!workId,
+  })
+}
+
+// ============================================================================
+// 🛠️ PHẦN 2: ADMIN HOOKS (Dành cho trang Quản lý / Chỉnh sửa nội dung)
+// ============================================================================
+
+// --- ADMIN WORK SECTIONS ---
+export const useCreateWorkSection = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createWorkSection,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['sections', variables.workId],
+      })
+    },
+  })
+}
+
+export const useUpdateWorkSection = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateWorkSection,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['sections'] })
+      queryClient.invalidateQueries({
+        queryKey: ['section', variables.sectionId],
+      })
+    },
+  })
+}
+
+export const useDeleteWorkSection = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteWorkSection,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sections'] })
+    },
+  })
+}
+
+// --- ADMIN WORK CHARACTERS ---
+export const useCreateWorkCharacter = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createWorkCharacter,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['characters', variables.workId],
+      })
+    },
+  })
+}
+
+export const useUpdateWorkCharacter = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateWorkCharacter,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['characters'] })
+    },
+  })
+}
+
+export const useDeleteWorkCharacter = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteWorkCharacter,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['characters'] })
+    },
+  })
+}
+
+// --- ADMIN ARTISTIC FEATURES ---
+export const useCreateArtisticFeature = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: createArtisticFeature,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['artisticFeatures', variables.workId],
+      })
+    },
+  })
+}
+
+export const useUpdateArtisticFeature = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: updateArtisticFeature,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['artisticFeatures'] })
+    },
+  })
+}
+
+export const useDeleteArtisticFeature = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: deleteArtisticFeature,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['artisticFeatures'] })
+    },
   })
 }

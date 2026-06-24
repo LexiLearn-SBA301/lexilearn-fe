@@ -25,7 +25,7 @@ export const ReadingPage = () => {
   const currentSectionId =
     sectionId || (sections && sections.length > 0 ? sections[0].id : null)
   const { data: currentSection, isLoading: isSectionLoading } =
-    useGetSectionDetail(currentSectionId)
+    useGetSectionDetail(work?.id, currentSectionId)
 
   // Fetch Nghệ thuật & Nhân vật (Cho Sidebar)
   const { data: artisticFeatures, isLoading: isFeaturesLoading } =

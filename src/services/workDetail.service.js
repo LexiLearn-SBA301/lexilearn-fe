@@ -1,4 +1,4 @@
-import { apiClient } from '../../../lib/api'
+import { apiClient } from '../lib/api'
 
 // -- WORK DETAILS (SECTIONS) --
 export const fetchWorkSections = async (workId) => {
@@ -6,8 +6,10 @@ export const fetchWorkSections = async (workId) => {
   return response.data.result
 }
 
-export const fetchWorkSectionDetail = async (sectionId) => {
-  const response = await apiClient.get(`/v1/sections/${sectionId}`)
+export const fetchWorkSectionDetail = async (workId, sectionId) => {
+  const response = await apiClient.get(
+    `/v1/works/${workId}/sections/${sectionId}`,
+  )
   return response.data.result
 }
 
@@ -42,7 +44,7 @@ export const updateWorkSection = async ({ sectionId, data }) => {
   )
   return response.data.result
 }
-export const deleteWorkSection = async (sectionId) => {
+export const deleteWorkSection = async ({ sectionId }) => {
   const response = await apiClient.delete(`/v1/admin/sections/${sectionId}`)
   return response.data
 }
@@ -62,7 +64,7 @@ export const updateWorkCharacter = async ({ characterId, data }) => {
   )
   return response.data.result
 }
-export const deleteWorkCharacter = async (characterId) => {
+export const deleteWorkCharacter = async ({ characterId }) => {
   const response = await apiClient.delete(`/v1/admin/characters/${characterId}`)
   return response.data
 }
@@ -82,7 +84,7 @@ export const updateArtisticFeature = async ({ featureId, data }) => {
   )
   return response.data.result
 }
-export const deleteArtisticFeature = async (featureId) => {
+export const deleteArtisticFeature = async ({ featureId }) => {
   const response = await apiClient.delete(
     `/v1/admin/artistic-features/${featureId}`,
   )
