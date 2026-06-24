@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react' // Bổ sung useState và us
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Search, Menu, User, LogOut } from 'lucide-react'
 import { useAuthStore } from '../../features/auth/store/auth.store'
+import { useChatStore } from '../../features/library/store/chat.store'
 
 export const Header = () => {
   const location = useLocation()
@@ -16,6 +17,9 @@ export const Header = () => {
   const accessToken = useAuthStore((state) => state.accessToken)
   const clearTokens = useAuthStore((state) => state.clearTokens)
   const isAuthenticated = Boolean(accessToken)
+
+  // Mở popup chatbot dùng chung (thay cho việc điều hướng tới /chatbot)
+  const openChat = useChatStore((state) => state.openChat)
 
   // Logic phát hiện scroll
   useEffect(() => {
@@ -48,6 +52,7 @@ export const Header = () => {
   const isActive = (path) => location.pathname.includes(path)
 
   return (
+    // Sử dụng fixed để header luôn nổi trên đầu, kết hợp với pt-20 ở App.jsx sẽ không bị đè nội dung
     <header
       className={`fixed top-0 w-full z-50 transition-all duration-500 ease-in-out ${
         isScrolled
@@ -107,12 +112,12 @@ export const Header = () => {
             >
               Tác giả
             </Link>
-            <Link
-              to="/chatbot"
-              className="text-on-surface-variant hover:text-secondary font-semibold text-[15px]"
+            <button
+              onClick={() => openChat()}
+              className="text-on-surface-variant hover:text-secondary transition-colors font-semibold text-[15px] cursor-pointer"
             >
               Chatbot
-            </Link>
+            </button>
           </nav>
         )}
         {/* Actions */}
