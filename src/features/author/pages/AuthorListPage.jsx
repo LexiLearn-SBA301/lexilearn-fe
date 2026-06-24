@@ -12,24 +12,20 @@ export const AuthorListPage = () => {
     { label: 'Văn học hiện đại', value: 'hien_dai' },
   ]
 
-  /* 
-  const GENRE_OPTIONS = [
-    { label: 'Thơ ca', value: 'tho_ca' },
-    { label: 'Truyện ngắn', value: 'truyen_ngan' },
-    { label: 'Tiểu thuyết', value: 'tieu_thuyet' }
-  ];
-  */
-
   const [selectedPeriods, setSelectedPeriods] = useState([])
-  // const [selectedGenres, setSelectedGenres] = useState([]); // [TƯƠNG LAI]
-
   const [appliedFilters, setAppliedFilters] = useState({
-    periods: [] /*, genres: [] */,
+    periods: [],
   })
 
-  const { data: authorsPage, isLoading } = useAuthors({ search: searchQuery })
+  // --- STATE QUẢN LÝ TRANG (FRONTEND) ---
+  const [currentPage, setCurrentPage] = useState(0)
+  const ITEMS_PER_PAGE = 12 // Số lượng tác giả 1 trang
+  const { data: authorsPage, isLoading } = useAuthors({
+    search: searchQuery || undefined,
+    size: 1000,
+  })
 
-  // 2. LOGIC FILTER
+  // --- 1. LỌC DATA (FRONTEND FILTER) ---
   const filteredAuthors = useMemo(() => {
     if (!authorsPage?.content) return []
 
@@ -38,14 +34,16 @@ export const AuthorListPage = () => {
         appliedFilters.periods.length === 0 ||
         appliedFilters.periods.includes(author.period)
 
-      /* 
-      const matchGenre = appliedFilters.genres.length === 0 || appliedFilters.genres.includes(author.genre);
-      return matchPeriod && matchGenre;
-      */
-
       return matchPeriod
     })
   }, [authorsPage, appliedFilters])
+
+  // --- 2. CẮT DATA THEO TRANG (FRONTEND PAGINATION) ---
+  const totalPages = Math.ceil(filteredAuthors.length / ITEMS_PER_PAGE)
+  const displayedAuthors = filteredAuthors.slice(
+    currentPage * ITEMS_PER_PAGE,
+    (currentPage + 1) * ITEMS_PER_PAGE,
+  )
 
   // Hàm toggle checkbox
   const toggleSelection = (value, type) => {
@@ -56,11 +54,6 @@ export const AuthorListPage = () => {
           : [...prev, value],
       )
     }
-    /* 
-    else {
-      setSelectedGenres(prev => prev.includes(value) ? prev.filter(i => i !== value) : [...prev, value]);
-    } 
-    */
   }
 
   return (
@@ -92,7 +85,7 @@ export const AuthorListPage = () => {
 
         <div className="flex flex-col md:flex-row gap-8">
           <aside className="w-full md:w-[260px] flex-shrink-0">
-            <div className="bg-bright-cream border border-outline-variant/30 rounded-[24px] p-6 sticky top-8">
+            <div className="bg-bright-cream border border-outline-variant/30 rounded-[24px] p-6 sticky top-8 h-fit">
               <h2 className="font-title text-2xl font-bold text-primary mb-1">
                 Bộ lọc
               </h2>
@@ -125,32 +118,9 @@ export const AuthorListPage = () => {
                 </div>
               </div>
 
-              {/*  FILTER THỂ LOẠI */}
-              {/* <div className="mb-8">
-                <h3 className="text-sm font-bold text-primary mb-3 uppercase tracking-wider">Thể loại</h3>
-                <div className="flex flex-col gap-3">
-                  {GENRE_OPTIONS.map((g) => (
-                    <label key={g.value} className="flex items-center gap-3 cursor-pointer group">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedGenres.includes(g.value)}
-                        onChange={() => toggleSelection(g.value, 'genre')}
-                        className="w-4 h-4 rounded border-outline-variant text-[#ab3429] focus:ring-[#ab3429] bg-transparent" 
-                      />
-                      <span className="text-sm font-medium group-hover:text-primary">{g.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-              */}
-
               {/* NÚT ÁP DỤNG BỘ LỌC */}
               <button
-                onClick={() =>
-                  setAppliedFilters({
-                    periods: selectedPeriods /*, genres: selectedGenres */,
-                  })
-                }
+                onClick={() => setAppliedFilters({ periods: selectedPeriods })}
                 className="w-full bg-[#ab3429] text-white py-3 rounded-xl font-bold hover:bg-[#8a1c14] transition-colors text-sm shadow-md mt-4"
               >
                 Áp dụng bộ lọc
@@ -158,23 +128,63 @@ export const AuthorListPage = () => {
             </div>
           </aside>
 
-          <section className="flex-grow min-w-0">
+          <section className="flex-grow min-w-0 flex flex-col min-h-[calc(100vh-350px)]">
             {isLoading ? (
-              <div className="flex min-h-[400px] items-center justify-center">
+              <div className="flex flex-grow items-center justify-center min-h-[400px]">
                 <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
               </div>
-            ) : filteredAuthors.length === 0 ? (
-              <div className="flex min-h-[400px] items-center justify-center rounded-[24px] border border-dashed border-outline-variant bg-surface">
+            ) : displayedAuthors.length === 0 ? (
+              <div className="flex flex-grow items-center justify-center min-h-[400px] rounded-[24px] border border-dashed border-outline-variant bg-surface">
                 <p className="text-on-surface-variant font-medium">
                   Không tìm thấy tác giả nào.
                 </p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredAuthors.map((author) => (
-                  <AuthorCard key={author.id} author={author} />
-                ))}
-              </div>
+              <>
+                {/* LƯỚI TÁC GIẢ (Sử dụng displayedAuthors đã được cắt theo trang) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {displayedAuthors.map((author) => (
+                    <AuthorCard key={author.id} author={author} />
+                  ))}
+                </div>
+
+                {/* UI PHÂN TRANG (Sử dụng totalPages tự tính bằng JS) */}
+                {totalPages > 1 && (
+                  <div className="mt-auto pt-12">
+                    <div className="flex justify-center items-center gap-6 mb-4 border-t border-outline-variant/30 pt-8">
+                      <button
+                        onClick={() => {
+                          setCurrentPage((prev) => prev - 1)
+                          window.scrollTo({ top: 0, behavior: 'smooth' })
+                        }}
+                        disabled={currentPage === 0}
+                        className="px-6 py-2.5 rounded-xl font-bold border border-[#ab3429]/20 text-[#ab3429] hover:bg-[#ab3429]/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                      >
+                        &larr; Trang trước
+                      </button>
+
+                      <div className="text-sm font-medium text-on-surface-variant bg-surface-container-lowest px-4 py-2 rounded-lg border border-outline-variant/20 shadow-sm">
+                        Trang{' '}
+                        <span className="font-bold text-primary">
+                          {currentPage + 1}
+                        </span>{' '}
+                        / {totalPages}
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          setCurrentPage((prev) => prev + 1)
+                          window.scrollTo({ top: 0, behavior: 'smooth' })
+                        }}
+                        disabled={currentPage === totalPages - 1}
+                        className="px-6 py-2.5 rounded-xl font-bold border border-[#ab3429]/20 text-[#ab3429] hover:bg-[#ab3429]/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                      >
+                        Trang sau &rarr;
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </section>
         </div>
