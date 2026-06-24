@@ -189,19 +189,26 @@ export const ReadingPageContent = ({
           <div className="w-20 h-[2px] bg-gradient-to-r from-transparent via-[#ab3429]/30 to-transparent mx-auto mt-8"></div>
         </div>
 
-        {/* Typography chuẩn mực */}
-        <div
-          className="prose prose-lg md:prose-xl max-w-none text-[#231a0c] font-quote leading-[2.2] tracking-wide text-justify
-                        first-letter:text-[80px] first-letter:font-title first-letter:font-black first-letter:text-[#ab3429] 
-                        first-letter:mr-4 first-letter:float-left first-letter:mt-2 first-letter:leading-[0.8]
-                        first-line:uppercase first-line:tracking-[0.1em] first-line:font-bold"
-        >
-          {currentSection?.content?.split('\n\n').map((paragraph, idx) => (
-            <p key={idx} className="mb-6">
-              {paragraph}
-            </p>
-          ))}
-        </div>
+        {/* Typography chuẩn mực: Phân loại Thơ và Văn xuôi */}
+        {currentSection?.contentType === 'POETRY' ? (
+          <div className="flex justify-center my-12 w-full">
+            <div className="font-quote text-lg md:text-xl text-[#231a0c] leading-[2.2] tracking-wide whitespace-pre-wrap italic opacity-95">
+              {currentSection?.content}
+            </div>
+          </div>
+        ) : (
+          <div
+            className="prose prose-lg md:prose-xl max-w-none text-[#231a0c] font-quote leading-[2.2] tracking-wide text-justify
+                          first-letter:text-[72px] first-letter:font-title first-letter:font-black first-letter:text-[#ab3429] 
+                          first-letter:mr-2 first-letter:float-left first-letter:mt-1 first-letter:leading-[0.85]"
+          >
+            {currentSection?.content?.split('\n\n').map((paragraph, idx) => (
+              <p key={idx} className="mb-6">
+                {paragraph}
+              </p>
+            ))}
+          </div>
+        )}
 
         {/* Nút Điều hướng Cuối bài */}
         <div className="mt-28 pt-10 border-t border-[#83746d]/20 flex flex-col sm:flex-row items-stretch justify-between gap-6">

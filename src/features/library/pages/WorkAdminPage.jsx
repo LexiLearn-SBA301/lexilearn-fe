@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Search,
   Plus,
@@ -177,6 +178,13 @@ export const WorkAdminPage = () => {
                   </div>
 
                   <div className="flex justify-end gap-2 mt-auto pt-2 border-t border-outline-variant/30">
+                    <Link
+                      to={`/admin/thu-vien/${work.slug}/chi-tiet`}
+                      className="p-2 text-[#004943] hover:bg-surface-container-high rounded-lg transition-colors flex items-center justify-center font-bold text-xs gap-1 mr-auto"
+                    >
+                      <BookOpen size={16} />
+                      <span className="hidden sm:inline">Nội dung</span>
+                    </Link>
                     {/* Thêm loading spinner cho nút Edit */}
                     <button
                       onClick={() => handleEdit(work)}

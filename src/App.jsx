@@ -17,6 +17,7 @@ import { Footer } from './components/layout/Footer'
 
 // Admin Pages
 import { WorkAdminPage } from './features/library/pages/WorkAdminPage'
+import { WorkDetailAdminPage } from './features/library/pages/WorkDetailAdminPage'
 import { AuthorAdminPage } from './features/author/pages/AuthorAdminPage'
 // Khởi tạo một instance của QueryClient
 const queryClient = new QueryClient()
@@ -51,6 +52,10 @@ export default function App() {
               {/* Tạm thời để mở để dev, sau này team làm Auth thì bọc <ProtectedRoute> vào đây */}
               <Route path="/admin/tac-gia" element={<AuthorAdminPage />} />
               <Route path="/admin/thu-vien" element={<WorkAdminPage />} />
+              <Route
+                path="/admin/thu-vien/:slug/chi-tiet"
+                element={<WorkDetailAdminPage />}
+              />
             </Routes>
           </div>
           <Footer />
