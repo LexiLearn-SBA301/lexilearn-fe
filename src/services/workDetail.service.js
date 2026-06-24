@@ -1,4 +1,4 @@
-import { apiClient } from '../../../lib/api'
+import { apiClient } from '../lib/api'
 
 // -- WORK DETAILS (SECTIONS) --
 export const fetchWorkSections = async (workId) => {
