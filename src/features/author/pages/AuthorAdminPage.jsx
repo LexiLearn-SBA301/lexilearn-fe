@@ -79,7 +79,7 @@ export const AuthorAdminPage = () => {
         {/* Tiêu đề */}
         <div className="mb-10">
           <h1 className="font-title text-4xl md:text-5xl font-bold text-primary mb-3">
-            Quản lý Tác giả
+            Quản lý tác giả
           </h1>
           <p className="text-on-surface-variant text-lg">
             Hệ thống phân loại và quản lý danh mục tác giả dành cho di sản văn
@@ -164,15 +164,15 @@ export const AuthorAdminPage = () => {
                 <div className="flex justify-end gap-2 pt-4 border-t border-outline-variant/30 mt-auto">
                   <button
                     onClick={() => handleEdit(author)}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-white border border-outline-variant/50 text-primary text-xs font-bold rounded-lg hover:bg-surface-container-high transition-colors"
+                    className="p-2 text-primary hover:bg-surface-container-high rounded-lg transition-colors"
                   >
-                    <Edit size={14} /> Sửa
+                    <Edit size={16} />
                   </button>
                   <button
-                    onClick={() => openDeleteModal(author)} // <-- ĐỔI THÀNH GỌI POPUP CUSTOM
-                    className="flex items-center gap-1.5 px-4 py-2 bg-white border border-destructive/30 text-destructive text-xs font-bold rounded-lg hover:bg-destructive hover:text-white transition-colors"
+                    onClick={() => openDeleteModal(author)}
+                    className="p-2 text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
                   >
-                    <Trash2 size={14} /> Xóa
+                    <Trash2 size={16} />
                   </button>
                 </div>
               </div>

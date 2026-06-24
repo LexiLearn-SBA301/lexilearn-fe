@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { LibraryPage } from './features/library/pages/LibraryPage'
 import { WorkDetailPage } from './features/library/pages/WorkDetailPage'
 import { AuthorListPage } from './features/author/pages/AuthorListPage'
@@ -18,6 +18,7 @@ import { Footer } from './components/layout/Footer'
 // Admin Pages
 import { WorkAdminPage } from './features/library/pages/WorkAdminPage'
 import { AuthorAdminPage } from './features/author/pages/AuthorAdminPage'
+import { TagAdminPage } from './features/tag/pages/TagAdminPage'
 // Khởi tạo một instance của QueryClient
 const queryClient = new QueryClient()
 
@@ -48,9 +49,15 @@ export default function App() {
               <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
               <Route path="/dat-lai-mat-khau" element={<ResetPasswordPage />} />
               {/* --- ADMIN ROUTES --- */}
-              {/* Tạm thời để mở để dev, sau này team làm Auth thì bọc <ProtectedRoute> vào đây */}
+              <Route
+                path="/admin"
+                element={<Navigate to="/admin/thu-vien" replace />}
+              />
+
+              {/* 2. Các trang giữ nguyên như cũ của bác */}
               <Route path="/admin/tac-gia" element={<AuthorAdminPage />} />
               <Route path="/admin/thu-vien" element={<WorkAdminPage />} />
+              <Route path="/admin/the" element={<TagAdminPage />} />
             </Routes>
           </div>
           <Footer />
