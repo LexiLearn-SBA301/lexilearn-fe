@@ -19,8 +19,7 @@ export const ReadingPageContent = ({
   isResizing,
   scrollProgress,
   handleNavigate,
-  setIsAIOpen,
-  setAiPrompt,
+  openChat,
 }) => {
   const [selectionRect, setSelectionRect] = useState(null)
   const [selectedText, setSelectedText] = useState('')
@@ -148,10 +147,9 @@ export const ReadingPageContent = ({
           >
             <button
               onClick={() => {
-                setAiPrompt(
+                openChat(
                   `Giải thích cho tôi đoạn văn sau:\n\n"${selectedText}"`,
                 )
-                setIsAIOpen(true)
                 setSelectionRect(null)
                 window.getSelection()?.removeAllRanges()
               }}

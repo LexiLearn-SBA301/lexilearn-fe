@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchWorks } from '../features/library/api/library.api'
+import { useChatStore } from '../features/library/store/chat.store'
 import { Search, BookOpen, Sparkles, Loader2 } from 'lucide-react' // Đã bỏ Mic
 
 export const HomePage = () => {
@@ -9,6 +10,7 @@ export const HomePage = () => {
   const [results, setResults] = useState([])
   const [isSearching, setIsSearching] = useState(false)
   const navigate = useNavigate()
+  const openChat = useChatStore((state) => state.openChat)
 
   const { data: featuredWorks, isLoading: isFeaturedLoading } = useQuery({
     queryKey: ['featured-works'],
@@ -68,7 +70,7 @@ export const HomePage = () => {
               <BookOpen size={20} /> Bắt đầu đọc
             </button>
             <button
-              onClick={() => navigate('/chatbot')}
+              onClick={() => openChat()}
               className="px-8 py-4 bg-transparent border-2 border-primary text-primary rounded-xl font-bold hover:bg-primary/5 transition-all flex items-center gap-2"
             >
               <Sparkles size={20} /> Hỏi chatbot

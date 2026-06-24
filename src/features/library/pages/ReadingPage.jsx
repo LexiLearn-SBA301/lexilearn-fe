@@ -7,10 +7,10 @@ import {
   useGetCharacters,
 } from '../hooks/useWorkSection'
 import { useWorkDetail } from '../hooks/useLibrary'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { ReadingPageSidebar } from '../components/ReadingPageSidebar'
 import { ReadingPageContent } from '../components/ReadingPageContent'
-import { AIAssistantPopup } from '../components/AIAssistantPopup'
+import { useChatStore } from '../store/chat.store'
 
 export const ReadingPage = () => {
   const { slug, sectionId } = useParams()
@@ -34,10 +34,11 @@ export const ReadingPage = () => {
     work?.id,
   )
 
+  // Mở popup chatbot dùng chung (kèm sẵn đoạn văn bôi đen nếu có)
+  const openChat = useChatStore((s) => s.openChat)
+
   // States
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isAIOpen, setIsAIOpen] = useState(false) // Quản lý đóng mở AI Popup
-  const [aiPrompt, setAiPrompt] = useState('') // Lưu đoạn text bôi đen để gửi cho AI
   const [sidebarTab, setSidebarTab] = useState('muc-luc') // 'muc-luc' | 'nghe-thuat' | 'nhan-vat'
   const [scrollProgress, setScrollProgress] = useState(0)
   const [featureFilter, setFeatureFilter] = useState('ALL') // Lọc phần nghệ thuật
@@ -162,37 +163,10 @@ export const ReadingPage = () => {
         isResizing={isResizing}
         scrollProgress={scrollProgress}
         handleNavigate={handleNavigate}
-        setIsAIOpen={setIsAIOpen}
-        setAiPrompt={setAiPrompt}
+        openChat={openChat}
       />
 
-      {/* Nút Trợ lý AI (Góc Dưới Phải - Premium FAB) */}
-      <div className="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-40">
-        {/* Vòng sáng Glowing background */}
-        <div className="absolute inset-0 bg-[#ab3429] rounded-full blur-xl opacity-30 animate-pulse"></div>
-        <button
-          onClick={() => setIsAIOpen(true)}
-          className="relative flex items-center justify-center w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-[#ab3429] to-[#6b1610] text-white rounded-full shadow-[0_8px_25px_rgba(171,52,41,0.5)] hover:shadow-[0_15px_35px_rgba(171,52,41,0.6)] hover:-translate-y-1 transition-all duration-300 group border border-white/20"
-          title="Hỏi Mộc Bản AI"
-        >
-          <Sparkles
-            size={26}
-            className="group-hover:rotate-12 group-hover:scale-110 transition-transform duration-500"
-          />
-        </button>
-      </div>
-
-      {/* TÍCH HỢP TRỢ LÝ AI (POPUP GÓC DƯỚI PHẢI) */}
-      <AIAssistantPopup
-        isOpen={isAIOpen}
-        onClose={() => {
-          setIsAIOpen(false)
-          setAiPrompt('')
-        }}
-        work={work}
-        currentSection={currentSection}
-        initialPrompt={aiPrompt}
-      />
+      {/* Nút nổi + popup chatbot do <ChatWidget /> ở App quản lý chung cho mọi trang */}
     </div>
   )
 }

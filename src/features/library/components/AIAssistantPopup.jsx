@@ -3,46 +3,79 @@ import {
   Sparkles,
   X,
   Send,
-  Bot,
   User,
   Loader2,
   Maximize2,
   Minimize2,
+  Cpu,
+  ChevronDown,
+  Check,
 } from 'lucide-react'
+import {
+  sendChatMessage,
+  CHAT_MODELS,
+  DEFAULT_CHAT_MODEL,
+} from '../api/chat.api'
+import chatbotInsideIcon from '../../../assets/images/chatbot-inside-icon.png'
 
 export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: `Xin chào! Tôi là Mộc Bản AI. Tôi có thể giúp bạn giải đáp các thắc mắc, tóm tắt nội dung hoặc phân tích nghệ thuật về tác phẩm **${work?.title || 'này'}**. Bạn muốn tôi giúp gì nào?`,
+      content: work?.title
+        ? `Xin chào! Tôi là Mộc Bản AI. Tôi có thể giúp bạn giải đáp các thắc mắc, tóm tắt nội dung hoặc phân tích nghệ thuật về tác phẩm **${work.title}**. Bạn muốn tôi giúp gì nào?`
+        : `Xin chào! Tôi là **Mộc Bản AI** — trợ lý văn học của bạn. Tôi có thể tóm tắt, phân tích tác phẩm, giải nghĩa từ Hán–Việt hay trả lời các câu hỏi về văn học Việt Nam. Bạn muốn hỏi gì nào?`,
     },
   ])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
+  // Model đang chọn + trạng thái mở dropdown chọn model (giống Claude/Gemini)
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_CHAT_MODEL)
+  const [isModelOpen, setIsModelOpen] = useState(false)
   const messagesEndRef = useRef(null)
 
-  const handleSend = (text) => {
+  const activeModel =
+    CHAT_MODELS.find((m) => m.id === selectedModel) ?? CHAT_MODELS[0]
+
+  const handleSend = async (text) => {
     const messageText = typeof text === 'string' ? text : input
-    if (!messageText.trim()) return
+    if (!messageText.trim() || isTyping) return
 
     const userMessage = { role: 'user', content: messageText.trim() }
     setMessages((prev) => [...prev, userMessage])
     setInput('')
     setIsTyping(true)
 
-    // Mô phỏng AI trả lời
-    setTimeout(() => {
-      setIsTyping(false)
+    try {
+      // Gọi API chatbot Python với model đang chọn, body { message }
+      const { answer } = await sendChatMessage({
+        message: userMessage.content,
+        modelId: selectedModel,
+      })
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content:
-            'Hiện tại tôi đang trong quá trình học hỏi và sẽ sớm có thể trả lời chi tiết các câu hỏi của bạn. Cảm ơn bạn đã trải nghiệm Mộc Bản AI!',
+          content: answer || 'Xin lỗi, tôi chưa nhận được nội dung trả lời.',
         },
       ])
-    }, 1500)
+    } catch (error) {
+      const detail =
+        error?.response?.data?.detail ||
+        error?.response?.data?.message ||
+        error?.message ||
+        'Lỗi không xác định'
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `⚠️ Không kết nối được tới chatbot (${detail}). Vui lòng kiểm tra server AI đang chạy.`,
+        },
+      ])
+    } finally {
+      setIsTyping(false)
+    }
   }
 
   // Xử lý khi có initialPrompt từ việc bôi đen
@@ -72,7 +105,7 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
       className={`fixed z-[80] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col bg-[#FAF3E7]/95 backdrop-blur-3xl shadow-[0_20px_80px_rgba(65,35,17,0.15),0_0_0_1px_rgba(131,116,109,0.1)] animate-in fade-in slide-in-from-bottom-12 zoom-in-[0.98]
         ${
           isExpanded
-            ? 'top-8 bottom-8 left-8 right-8 md:left-auto md:right-8 md:w-[600px] rounded-[32px]'
+            ? 'inset-0 md:inset-y-0 md:left-auto md:right-0 md:w-[640px] rounded-none md:rounded-l-[32px]'
             : 'bottom-24 right-6 w-[400px] h-[600px] max-h-[80vh] rounded-[32px]'
         }
       `}
@@ -83,9 +116,11 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
       {/* Header Premium Light */}
       <div className="relative px-7 py-6 bg-white/40 backdrop-blur-xl border-b border-[#83746d]/10 flex items-center justify-between rounded-t-[inherit] z-10 flex-shrink-0">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#ab3429] to-[#8a1c14] flex items-center justify-center shadow-[0_4px_15px_rgba(171,52,41,0.25)] border border-[#8a1c14]/50">
-            <Bot size={24} className="text-white" />
-          </div>
+          <img
+            src={chatbotInsideIcon}
+            alt="Mộc Bản AI"
+            className="w-15 h-15 rounded-2xl object-contain drop-shadow-[0_4px_12px_rgba(65,35,17,0.22)]"
+          />
           <div>
             <h3 className="font-title text-[18px] font-black flex items-center gap-2 tracking-wide text-[#412311]">
               Mộc Bản AI
@@ -117,6 +152,80 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
         </div>
       </div>
 
+      {/* Thanh chọn Model (giống bộ chọn model của Claude/Gemini) */}
+      <div className="relative px-6 py-3 bg-white/30 backdrop-blur-md border-b border-[#83746d]/10 z-30 flex-shrink-0">
+        <button
+          onClick={() => setIsModelOpen((v) => !v)}
+          className="group flex items-center gap-2 px-3.5 py-2 rounded-full bg-white border border-[#83746d]/20 shadow-sm hover:border-[#ab3429]/50 hover:bg-[#ab3429]/[0.03] transition-all"
+          title="Chọn mô hình AI"
+        >
+          <Cpu size={14} className="text-[#ab3429]" />
+          <span className="text-[12px] font-bold text-[#412311] tracking-wide">
+            {activeModel.label}
+          </span>
+          <ChevronDown
+            size={14}
+            className={`text-[#83746d] transition-transform duration-300 ${
+              isModelOpen ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
+
+        {isModelOpen && (
+          <>
+            {/* Lớp phủ bắt click ra ngoài để đóng dropdown */}
+            <div
+              className="fixed inset-0 z-30"
+              onClick={() => setIsModelOpen(false)}
+            />
+            <div className="absolute left-6 top-full mt-1.5 w-[260px] bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_12px_40px_rgba(65,35,17,0.18)] border border-[#83746d]/15 z-40 p-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+              {CHAT_MODELS.map((model) => {
+                const isActive = model.id === selectedModel
+                return (
+                  <button
+                    key={model.id}
+                    onClick={() => {
+                      setSelectedModel(model.id)
+                      setIsModelOpen(false)
+                    }}
+                    className={`w-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all ${
+                      isActive
+                        ? 'bg-[#ab3429]/[0.08]'
+                        : 'hover:bg-[#83746d]/[0.08]'
+                    }`}
+                  >
+                    <Cpu
+                      size={16}
+                      className={`mt-0.5 flex-shrink-0 ${
+                        isActive ? 'text-[#ab3429]' : 'text-[#83746d]'
+                      }`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <span
+                        className={`block text-[13px] font-bold ${
+                          isActive ? 'text-[#ab3429]' : 'text-[#412311]'
+                        }`}
+                      >
+                        {model.label}
+                      </span>
+                      <span className="block text-[11px] text-[#83746d] mt-0.5 leading-snug">
+                        {model.description}
+                      </span>
+                    </div>
+                    {isActive && (
+                      <Check
+                        size={16}
+                        className="text-[#ab3429] mt-0.5 flex-shrink-0"
+                      />
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Chat Area */}
       <div className="relative flex-1 overflow-y-auto p-5 custom-scrollbar flex flex-col gap-6 z-10">
         {messages.map((msg, index) => (
@@ -124,16 +233,18 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
             key={index}
             className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
           >
-            {/* Avatar */}
-            <div
-              className={`w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center mt-1 shadow-sm border ${
-                msg.role === 'user'
-                  ? 'bg-white border-[#83746d]/20 text-[#ab3429]'
-                  : 'bg-[#ab3429] border-[#8a1c14] text-white shadow-[0_4px_10px_rgba(171,52,41,0.2)]'
-              }`}
-            >
-              {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
-            </div>
+            {/* Avatar — khách hàng giữ icon người, bot dùng ảnh chatbot-inside-icon */}
+            {msg.role === 'user' ? (
+              <div className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center mt-1 shadow-sm border bg-white border-[#83746d]/20 text-[#ab3429]">
+                <User size={16} />
+              </div>
+            ) : (
+              <img
+                src={chatbotInsideIcon}
+                alt="Mộc Bản AI"
+                className="w-9 h-9 rounded-xl object-contain flex-shrink-0 mt-1 drop-shadow-[0_3px_8px_rgba(65,35,17,0.18)]"
+              />
+            )}
 
             {/* Message Bubble */}
             <div
@@ -155,9 +266,11 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
         {/* Typing Indicator */}
         {isTyping && (
           <div className="flex gap-3 flex-row animate-in fade-in duration-500 pl-2">
-            <div className="w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center mt-1 bg-[#ab3429] border border-[#8a1c14] text-white shadow-[0_4px_10px_rgba(171,52,41,0.2)]">
-              <Bot size={16} />
-            </div>
+            <img
+              src={chatbotInsideIcon}
+              alt="Mộc Bản AI"
+              className="w-9 h-9 rounded-xl object-contain flex-shrink-0 mt-1 drop-shadow-[0_3px_8px_rgba(65,35,17,0.18)]"
+            />
             <div className="bg-white border border-[#83746d]/15 shadow-sm rounded-3xl rounded-tl-sm px-5 py-4 flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce"></div>
               <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce [animation-delay:0.2s]"></div>
