@@ -6,9 +6,8 @@ import {
   Users,
   Sparkles,
   Loader2,
-  Plus,
-  Edit,
-  Trash2,
+  Feather,
+  BookOpen,
 } from 'lucide-react'
 import { useWorkDetail } from '../hooks/useLibrary'
 import { fetchWorkSectionDetail } from '../../../services/workDetail.service'
@@ -32,6 +31,9 @@ import {
   ArtisticFeatureFormDialog,
   ConfirmDeleteDialog,
 } from '../components/WorkDetailForms'
+import { AdminWorkDetailSections } from '../components/AdminWorkDetailSections'
+import { AdminWorkDetailCharacters } from '../components/AdminWorkDetailCharacters'
+import { AdminWorkDetailFeatures } from '../components/AdminWorkDetailFeatures'
 
 export const WorkDetailAdminPage = () => {
   const { slug } = useParams()
@@ -209,27 +211,32 @@ export const WorkDetailAdminPage = () => {
         <div className="mb-8">
           <Link
             to="/admin/thu-vien"
-            className="inline-flex items-center text-sm font-bold text-on-surface-variant hover:text-primary mb-4 transition-colors"
+            className="inline-flex items-center text-sm font-bold text-on-surface-variant hover:text-primary mb-6 transition-colors"
           >
             <ChevronLeft size={16} className="mr-1" /> Quay lại kho sách
           </Link>
-          <div className="flex flex-col md:flex-row gap-6 items-start md:items-center bg-bright-cream p-6 rounded-3xl border border-outline-variant/30 shadow-sm">
-            {work.coverUrl && (
+          <div className="flex flex-col md:flex-row gap-8 items-start md:items-center">
+            {work.coverUrl ? (
               <img
                 src={work.coverUrl}
                 alt={work.title}
-                className="w-20 h-28 object-cover rounded-lg shadow-md"
+                className="w-28 h-40 object-cover rounded-2xl shadow-xl border border-outline-variant/20"
               />
+            ) : (
+              <div className="w-28 h-40 rounded-2xl bg-surface-container-high flex items-center justify-center border border-outline-variant/30 shadow-sm">
+                <BookOpen size={32} className="text-on-surface-variant/50" />
+              </div>
             )}
             <div>
-              <div className="text-[10px] uppercase font-bold tracking-widest text-[#ab3429] mb-1">
+              <div className="inline-block px-3 py-1 bg-[#ab3429]/10 text-[#ab3429] text-xs font-bold uppercase tracking-widest rounded-lg mb-3">
                 Quản lý nội dung tác phẩm
               </div>
-              <h1 className="font-title text-3xl font-extrabold text-primary mb-2">
+              <h1 className="font-title text-4xl md:text-5xl font-extrabold text-primary mb-3 leading-tight">
                 {work.title}
               </h1>
-              <p className="text-on-surface-variant font-medium">
-                {work.authorName} • {work.genre}
+              <p className="text-lg text-on-surface-variant font-medium flex items-center gap-2">
+                <Feather size={18} /> {work.authorName}{' '}
+                <span className="opacity-50">•</span> {work.genre}
               </p>
             </div>
           </div>
@@ -263,196 +270,37 @@ export const WorkDetailAdminPage = () => {
         </div>
 
         {/* Content Area */}
-        <div className="bg-bright-cream rounded-3xl border border-outline-variant/30 p-6 md:p-8 shadow-sm min-h-[400px]">
-          {/* TOP BAR của mỗi tab */}
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="font-title text-2xl font-bold text-primary">
-              {tabs.find((t) => t.id === activeTab)?.label}
-            </h2>
-            <button
-              onClick={() =>
-                openForm(
-                  activeTab === 'sections'
-                    ? 'section'
-                    : activeTab === 'characters'
-                      ? 'character'
-                      : 'feature',
-                )
-              }
-              className="px-4 py-2 bg-[#ab3429] text-white rounded-xl font-bold hover:bg-[#8a1c14] transition-all flex items-center gap-2 shadow-sm"
-            >
-              <Plus size={18} /> Thêm mới
-            </button>
-          </div>
-
+        <div className="min-h-[400px]">
           {/* RENDERING SECTIONS LIST */}
           {activeTab === 'sections' && (
-            <div>
-              {isSectionsLoading ? (
-                <div className="text-center py-10">
-                  <Loader2 className="animate-spin mx-auto text-primary" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {sections?.length === 0 ? (
-                    <p className="text-center text-on-surface-variant py-10">
-                      Chưa có nội dung nào.
-                    </p>
-                  ) : null}
-                  {sections?.map((section) => (
-                    <div
-                      key={section.id}
-                      className="flex items-center justify-between p-4 rounded-2xl border border-outline-variant/30 bg-white hover:border-primary/30 transition-colors group"
-                    >
-                      <div>
-                        <h4 className="font-bold text-lg text-primary">
-                          {section.title || `Chương ${section.number}`}
-                        </h4>
-                        <div className="flex gap-3 text-sm text-on-surface-variant mt-1">
-                          <span className="font-medium px-2 py-0.5 bg-surface-container rounded-md">
-                            Chương {section.number}
-                          </span>
-                          <span className="font-medium px-2 py-0.5 bg-surface-container rounded-md">
-                            {section.contentType === 'POETRY'
-                              ? 'Thơ'
-                              : 'Văn xuôi'}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => openForm('section', section)}
-                          disabled={
-                            isFetchingDetail && fetchingItemId === section.id
-                          }
-                          className="p-2 text-primary hover:bg-surface-container-high rounded-lg disabled:opacity-50"
-                        >
-                          {isFetchingDetail && fetchingItemId === section.id ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
-                            <Edit size={16} />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick('section', section)}
-                          className="p-2 text-destructive hover:bg-destructive/10 rounded-lg"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <AdminWorkDetailSections
+              sections={sections}
+              isLoading={isSectionsLoading}
+              openForm={openForm}
+              handleDeleteClick={handleDeleteClick}
+              isFetchingDetail={isFetchingDetail}
+              fetchingItemId={fetchingItemId}
+            />
           )}
 
           {/* RENDERING CHARACTERS LIST */}
           {activeTab === 'characters' && (
-            <div>
-              {isCharsLoading ? (
-                <div className="text-center py-10">
-                  <Loader2 className="animate-spin mx-auto text-primary" />
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {characters?.length === 0 ? (
-                    <p className="text-center text-on-surface-variant py-10 col-span-full">
-                      Chưa có nhân vật nào.
-                    </p>
-                  ) : null}
-                  {characters?.map((char) => (
-                    <div
-                      key={char.id}
-                      className="p-4 rounded-2xl border border-outline-variant/30 bg-white hover:border-primary/30 transition-colors group"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-bold text-lg text-primary">
-                          {char.name}
-                        </h4>
-                        <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => openForm('character', char)}
-                            className="p-1.5 text-primary hover:bg-surface-container-high rounded-lg"
-                          >
-                            <Edit size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick('character', char)}
-                            className="p-1.5 text-destructive hover:bg-destructive/10 rounded-lg"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                      <span
-                        className={`inline-block px-2 py-1 text-[10px] font-bold uppercase rounded-md mb-2 ${char.role === 'Chính' ? 'bg-[#ab3429]/10 text-[#ab3429]' : 'bg-surface-container text-on-surface-variant'}`}
-                      >
-                        {char.role}
-                      </span>
-                      <p className="text-sm text-on-surface-variant line-clamp-2">
-                        {char.description}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <AdminWorkDetailCharacters
+              characters={characters}
+              isLoading={isCharsLoading}
+              openForm={openForm}
+              handleDeleteClick={handleDeleteClick}
+            />
           )}
 
           {/* RENDERING ARTISTIC FEATURES */}
           {activeTab === 'features' && (
-            <div>
-              {isFeaturesLoading ? (
-                <div className="text-center py-10">
-                  <Loader2 className="animate-spin mx-auto text-primary" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {features?.length === 0 ? (
-                    <p className="text-center text-on-surface-variant py-10">
-                      Chưa có đặc sắc nghệ thuật nào.
-                    </p>
-                  ) : null}
-                  {features?.map((feature) => (
-                    <div
-                      key={feature.id}
-                      className="p-4 rounded-2xl border border-outline-variant/30 bg-white hover:border-primary/30 transition-colors group"
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-bold text-lg text-primary">
-                          {feature.name}
-                        </h4>
-                        <div className="flex gap-2 opacity-50 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => openForm('feature', feature)}
-                            className="p-2 text-primary hover:bg-surface-container-high rounded-lg"
-                          >
-                            <Edit size={16} />
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleDeleteClick('feature', feature)
-                            }
-                            className="p-2 text-destructive hover:bg-destructive/10 rounded-lg"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </div>
-                      <p className="text-sm text-on-surface-variant mb-3">
-                        {feature.description}
-                      </p>
-                      {feature.example && (
-                        <div className="p-3 bg-surface-container-lowest rounded-xl border border-outline-variant/20 italic text-sm text-[#231a0c] font-quote">
-                          "{feature.example}"
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <AdminWorkDetailFeatures
+              features={features}
+              isLoading={isFeaturesLoading}
+              openForm={openForm}
+              handleDeleteClick={handleDeleteClick}
+            />
           )}
         </div>
       </div>

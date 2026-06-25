@@ -353,8 +353,10 @@ export const CharacterFormDialog = ({
             <Field label="Vai trò" icon={Star} error={errors.roleType}>
               <CustomSelect
                 options={[
-                  { value: 'MAIN_CHARACTER', label: 'Nhân vật chính' },
-                  { value: 'SUPPORTING_CHARACTER', label: 'Nhân vật phụ' },
+                  { value: 'MAIN', label: 'Nhân vật chính' },
+                  { value: 'SUPPORTING', label: 'Nhân vật phụ/hỗ trợ' },
+                  { value: 'ANTAGONIST', label: 'Nhân vật phản diện' },
+                  { value: 'NARRATOR', label: 'Người kể chuyện' },
                 ]}
                 value={watch('roleType')}
                 onChange={(val) =>
@@ -467,10 +469,11 @@ export const ArtisticFeatureFormDialog = ({
             >
               <CustomSelect
                 options={[
-                  { value: 'PLOT', label: 'Cốt truyện' },
-                  { value: 'NARRATIVE_ART', label: 'Nghệ thuật kể chuyện' },
-                  { value: 'LANGUAGE', label: 'Ngôn ngữ' },
-                  { value: 'OTHER', label: 'Khác' },
+                  { value: 'NARRATIVE', label: 'Nghệ thuật kể chuyện (Tự sự)' },
+                  { value: 'LANGUAGE', label: 'Ngôn ngữ & Từ vựng' },
+                  { value: 'IMAGERY', label: 'Hình ảnh & Miêu tả' },
+                  { value: 'STRUCTURE', label: 'Cấu trúc & Bố cục' },
+                  { value: 'SYMBOLISM', label: 'Biểu tượng & Ẩn dụ' },
                 ]}
                 value={watch('featureType')}
                 onChange={(val) =>
