@@ -10,6 +10,9 @@ import {
   Feather,
   LibraryBig,
 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../../auth/store/auth.store'
+import { useGetBookmarks } from '../hooks/useReading'
 
 export const LibraryPage = () => {
   // 1. STATE BỘ LỌC SIDEBAR (Cần bấm Áp dụng)
@@ -34,6 +37,10 @@ export const LibraryPage = () => {
     page: currentPage,
     size: 3,
   })
+
+  const user = useAuthStore((s) => s.user)
+  const { data: bookmarks } = useGetBookmarks(!!user)
+  const navigate = useNavigate()
 
   // DATA CỨNG CHO SIDEBAR
   const genres = [
@@ -226,6 +233,55 @@ export const LibraryPage = () => {
             </div> */}
           </div>
         </div>
+
+        {/* BLOCK TIẾP TỤC ĐỌC */}
+        {user && bookmarks && bookmarks.length > 0 && (
+          <div className="mb-8">
+            <h2 className="font-title font-bold text-2xl text-primary mb-4 flex items-center gap-2">
+              <BookOpen size={24} /> Tiếp tục đọc
+            </h2>
+            <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
+              {bookmarks.map((b) => (
+                <div
+                  key={b.id}
+                  className="min-w-[280px] bg-surface-container-lowest p-4 rounded-2xl border border-outline-variant/30 flex items-center gap-4 cursor-pointer hover:shadow-md transition-all group"
+                  onClick={() => navigate(`/thu-vien/${b.work.slug}/doc`)}
+                >
+                  {b.work.coverUrl ? (
+                    <img
+                      src={b.work.coverUrl}
+                      className="w-12 h-16 object-cover rounded-md shadow-sm group-hover:scale-105 transition-transform"
+                      alt={b.work.title}
+                    />
+                  ) : (
+                    <div className="w-12 h-16 bg-[#004943]/10 rounded-md flex items-center justify-center text-[#004943] group-hover:scale-105 transition-transform">
+                      <BookOpen size={20} />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-primary truncate text-sm mb-1">
+                      {b.work.title}
+                    </h3>
+                    <p className="text-xs text-on-surface-variant truncate mb-2">
+                      {b.currentSection
+                        ? b.currentSection.title
+                        : 'Bắt đầu đọc'}
+                    </p>
+                    <div className="w-full bg-outline-variant/20 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-[#004943] h-full"
+                        style={{ width: `${b.progressPercent}%` }}
+                      ></div>
+                    </div>
+                    <p className="text-[10px] text-right text-on-surface-variant mt-1 font-medium">
+                      {b.progressPercent}%
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* LƯỚI TÁC PHẨM */}
         <div className="w-full flex flex-col flex-grow min-h-[calc(100vh-250px)]">

@@ -6,7 +6,112 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  X,
 } from 'lucide-react'
+import {
+  useGetSectionNotes,
+  useCreateNote,
+  useDeleteNote,
+} from '../hooks/useReading'
+
+const getGlobalOffset = (node, offset) => {
+  if (node.nodeType === 3) {
+    const parent = node.parentElement
+    if (parent.hasAttribute('data-offset')) {
+      return parseInt(parent.getAttribute('data-offset'), 10) + offset
+    }
+  } else if (node.nodeType === 1) {
+    if (offset < node.childNodes.length) {
+      const child = node.childNodes[offset]
+      if (child && child.nodeType === 1 && child.hasAttribute('data-offset')) {
+        return parseInt(child.getAttribute('data-offset'), 10)
+      } else if (
+        child &&
+        child.nodeType === 3 &&
+        child.parentElement.hasAttribute('data-offset')
+      ) {
+        return parseInt(child.parentElement.getAttribute('data-offset'), 10)
+      }
+    } else if (node.childNodes.length > 0) {
+      const lastChild = node.childNodes[node.childNodes.length - 1]
+      if (lastChild.nodeType === 1 && lastChild.hasAttribute('data-offset')) {
+        return (
+          parseInt(lastChild.getAttribute('data-offset'), 10) +
+          lastChild.textContent.length
+        )
+      }
+    }
+    if (node.hasAttribute('data-offset')) {
+      return parseInt(node.getAttribute('data-offset'), 10) + offset
+    }
+  }
+  return null
+}
+
+const getParagraphs = (content, notes) => {
+  if (!content) return []
+  const paragraphs = []
+  let offset = 0
+  const parts = content.split('\n\n')
+
+  parts.forEach((p) => {
+    const pStart = offset
+    const pEnd = offset + p.length
+
+    const overlappingNotes = (notes || []).filter(
+      (n) => n.startOffset < pEnd && n.endOffset > pStart,
+    )
+
+    let segments = []
+    let currentIdx = pStart
+
+    const sorted = [...overlappingNotes].sort(
+      (a, b) => a.startOffset - b.startOffset,
+    )
+
+    for (const note of sorted) {
+      const markStart = Math.max(pStart, note.startOffset)
+      const markEnd = Math.min(pEnd, note.endOffset)
+
+      const effectiveMarkStart = Math.max(markStart, currentIdx)
+
+      if (effectiveMarkStart > currentIdx) {
+        segments.push({
+          text: content.substring(currentIdx, effectiveMarkStart),
+          isMark: false,
+          globalOffset: currentIdx,
+        })
+      }
+
+      if (markEnd > effectiveMarkStart) {
+        segments.push({
+          text: content.substring(effectiveMarkStart, markEnd),
+          isMark: true,
+          note,
+          globalOffset: effectiveMarkStart,
+        })
+      }
+      currentIdx = Math.max(currentIdx, markEnd)
+    }
+
+    if (currentIdx < pEnd) {
+      segments.push({
+        text: content.substring(currentIdx, pEnd),
+        isMark: false,
+        globalOffset: currentIdx,
+      })
+    }
+
+    paragraphs.push({
+      startOffset: pStart,
+      segments,
+    })
+
+    offset += p.length + 2 // +2 for \n\n
+  })
+
+  return paragraphs
+}
 
 export const ReadingPageContent = ({
   work,
@@ -19,28 +124,76 @@ export const ReadingPageContent = ({
   isResizing,
   scrollProgress,
   handleNavigate,
-  setIsAIOpen,
-  setAiPrompt,
+  openChat,
+  isCompleted,
+  setIsCompleted,
+  upsertBookmark,
 }) => {
   const [selectionRect, setSelectionRect] = useState(null)
   const [selectedText, setSelectedText] = useState('')
+  const [selectionRange, setSelectionRange] = useState(null)
+
+  const { data: notes } = useGetSectionNotes(currentSection?.id)
+  const { mutate: createNote } = useCreateNote()
+  const { mutate: deleteNote } = useDeleteNote()
+  const [activeNote, setActiveNote] = useState(null)
 
   const handleMouseUp = () => {
     const selection = window.getSelection()
     const text = selection.toString().trim()
 
-    if (text && text.length > 5) {
+    if (text && text.length > 0) {
       const range = selection.getRangeAt(0)
       const rect = range.getBoundingClientRect()
 
-      setSelectionRect({
-        top: rect.top - 50, // Nổi lên trên đoạn bôi đen một chút
-        left: rect.left + rect.width / 2,
-      })
-      setSelectedText(text)
+      const startOffset = getGlobalOffset(
+        range.startContainer,
+        range.startOffset,
+      )
+      const endOffset = getGlobalOffset(range.endContainer, range.endOffset)
+
+      if (
+        startOffset !== null &&
+        endOffset !== null &&
+        startOffset < endOffset
+      ) {
+        // Use raw content to make sure it matches perfectly
+        const exactText = currentSection.content.substring(
+          startOffset,
+          endOffset,
+        )
+        setSelectionRect({
+          top: rect.top - 50,
+          left: rect.left + rect.width / 2,
+        })
+        setSelectedText(exactText)
+        setSelectionRange({ startOffset, endOffset })
+      } else {
+        setSelectionRect(null)
+        setSelectedText('')
+        setSelectionRange(null)
+      }
     } else {
       setSelectionRect(null)
       setSelectedText('')
+      setSelectionRange(null)
+    }
+  }
+
+  const handleCreateNote = (color) => {
+    if (selectionRange && currentSection) {
+      createNote({
+        sectionId: currentSection.id,
+        data: {
+          startOffset: selectionRange.startOffset,
+          endOffset: selectionRange.endOffset,
+          highlightedText: selectedText,
+          userNote: null,
+          color: color,
+        },
+      })
+      setSelectionRect(null)
+      window.getSelection()?.removeAllRanges()
     }
   }
 
@@ -62,11 +215,18 @@ export const ReadingPageContent = ({
       if (!window.getSelection().toString().trim()) {
         setSelectionRect(null)
         setSelectedText('')
+        setSelectionRange(null)
       }
     }
+    const handleClickOutside = () => {
+      setActiveNote(null)
+    }
     document.addEventListener('selectionchange', handleSelectionChange)
-    return () =>
+    document.addEventListener('click', handleClickOutside)
+    return () => {
       document.removeEventListener('selectionchange', handleSelectionChange)
+      document.removeEventListener('click', handleClickOutside)
+    }
   }, [])
 
   return (
@@ -140,31 +300,74 @@ export const ReadingPageContent = ({
             : 'slide-in-from-left-16'
         }`}
       >
-        {/* TOOLTIP: BÔI ĐEN HỎI AI */}
+        {/* TOOLTIP: BÔI ĐEN HỎI AI & HIGHLIGHT */}
         {selectionRect && (
           <div
-            className="fixed z-[100] transform -translate-x-1/2 animate-in fade-in zoom-in-95 duration-200"
+            className="fixed z-[100] transform -translate-x-1/2 animate-in fade-in zoom-in-95 duration-200 flex flex-col items-center gap-2"
             style={{ top: selectionRect.top, left: selectionRect.left }}
           >
-            <button
-              onClick={() => {
-                setAiPrompt(
-                  `Giải thích cho tôi đoạn văn sau:\n\n"${selectedText}"`,
-                )
-                setIsAIOpen(true)
-                setSelectionRect(null)
-                window.getSelection()?.removeAllRanges()
-              }}
-              className="flex items-center gap-1.5 px-3 py-2 bg-[#ab3429] text-white rounded-xl shadow-[0_8px_20px_rgba(171,52,41,0.3)] hover:bg-[#8a1c14] hover:-translate-y-1 transition-all group border border-white/20 after:content-[''] after:absolute after:bottom-[-6px] after:left-1/2 after:-translate-x-1/2 after:border-[6px] after:border-transparent after:border-t-[#ab3429]"
-            >
-              <Sparkles
-                size={14}
-                className="group-hover:rotate-12 transition-transform"
+            <div className="flex items-center bg-white shadow-[0_8px_20px_rgba(0,0,0,0.15)] rounded-xl p-1.5 border border-black/5 gap-1.5">
+              <button
+                onClick={() => handleCreateNote('YELLOW')}
+                className="w-6 h-6 rounded-full bg-yellow-200 hover:scale-110 transition-transform shadow-sm"
               />
-              <span className="font-bold text-[11px] tracking-wider uppercase">
-                Hỏi Mộc Bản AI
-              </span>
-            </button>
+              <button
+                onClick={() => handleCreateNote('GREEN')}
+                className="w-6 h-6 rounded-full bg-green-200 hover:scale-110 transition-transform shadow-sm"
+              />
+              <button
+                onClick={() => handleCreateNote('BLUE')}
+                className="w-6 h-6 rounded-full bg-blue-200 hover:scale-110 transition-transform shadow-sm"
+              />
+              <button
+                onClick={() => handleCreateNote('RED')}
+                className="w-6 h-6 rounded-full bg-red-200 hover:scale-110 transition-transform shadow-sm"
+              />
+              <div className="w-[1px] h-6 bg-black/10 mx-1"></div>
+              <button
+                onClick={() => {
+                  openChat(
+                    `Giải thích cho tôi đoạn văn sau:\n\n"${selectedText}"`,
+                  )
+                  setSelectionRect(null)
+                  window.getSelection()?.removeAllRanges()
+                }}
+                className="flex items-center gap-1 px-3 py-1 bg-[#ab3429] text-white rounded-lg hover:bg-[#8a1c14] transition-all shadow-sm"
+              >
+                <Sparkles size={12} />
+                <span className="font-bold text-[10px] tracking-wider uppercase">
+                  AI
+                </span>
+              </button>
+            </div>
+            {/* Mũi tên trỏ xuống */}
+            <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-transparent border-t-white absolute -bottom-[7px] left-1/2 -translate-x-1/2 filter drop-shadow-sm"></div>
+          </div>
+        )}
+
+        {/* TOOLTIP: XOÁ HIGHLIGHT */}
+        {activeNote && (
+          <div
+            className="fixed z-[100] transform -translate-x-1/2 animate-in fade-in zoom-in-95 duration-200 flex flex-col items-center gap-2"
+            style={{ top: activeNote.rect.top, left: activeNote.rect.left }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center bg-white shadow-[0_8px_20px_rgba(0,0,0,0.15)] rounded-xl p-1.5 border border-black/5">
+              <button
+                onClick={() => {
+                  deleteNote(activeNote.note.id)
+                  setActiveNote(null)
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all shadow-sm"
+              >
+                <X size={14} />
+                <span className="font-bold text-[11px] tracking-wider uppercase">
+                  Xoá Highlight
+                </span>
+              </button>
+            </div>
+            {/* Mũi tên trỏ xuống */}
+            <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-transparent border-t-white absolute -bottom-[7px] left-1/2 -translate-x-1/2 filter drop-shadow-sm"></div>
           </div>
         )}
 
@@ -193,7 +396,46 @@ export const ReadingPageContent = ({
         {currentSection?.contentType === 'POETRY' ? (
           <div className="flex justify-center my-12 w-full">
             <div className="font-quote text-lg md:text-xl text-[#231a0c] leading-[2.2] tracking-wide whitespace-pre-wrap italic opacity-95">
-              {currentSection?.content}
+              {getParagraphs(currentSection?.content, notes).map((p, pIdx) => (
+                <div key={pIdx} className="mb-6">
+                  {p.segments.map((seg, sIdx) => {
+                    if (seg.isMark) {
+                      const colorMap = {
+                        YELLOW: 'bg-yellow-200',
+                        GREEN: 'bg-green-200',
+                        BLUE: 'bg-blue-200',
+                        RED: 'bg-red-200',
+                      }
+                      return (
+                        <mark
+                          key={sIdx}
+                          data-offset={seg.globalOffset}
+                          className={`${colorMap[seg.note.color]} text-inherit bg-opacity-70 rounded-sm px-0.5 mx-px cursor-pointer hover:opacity-80 transition-opacity`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            const rect = e.target.getBoundingClientRect()
+                            setActiveNote({
+                              note: seg.note,
+                              rect: {
+                                top: rect.top - 40,
+                                left: rect.left + rect.width / 2,
+                              },
+                            })
+                            setSelectionRect(null)
+                          }}
+                        >
+                          {seg.text}
+                        </mark>
+                      )
+                    }
+                    return (
+                      <span key={sIdx} data-offset={seg.globalOffset}>
+                        {seg.text}
+                      </span>
+                    )
+                  })}
+                </div>
+              ))}
             </div>
           </div>
         ) : (
@@ -202,9 +444,44 @@ export const ReadingPageContent = ({
                           first-letter:text-[72px] first-letter:font-title first-letter:font-black first-letter:text-[#ab3429] 
                           first-letter:mr-2 first-letter:float-left first-letter:mt-1 first-letter:leading-[0.85]"
           >
-            {currentSection?.content?.split('\n\n').map((paragraph, idx) => (
-              <p key={idx} className="mb-6">
-                {paragraph}
+            {getParagraphs(currentSection?.content, notes).map((p, pIdx) => (
+              <p key={pIdx} className="mb-6">
+                {p.segments.map((seg, sIdx) => {
+                  if (seg.isMark) {
+                    const colorMap = {
+                      YELLOW: 'bg-yellow-200',
+                      GREEN: 'bg-green-200',
+                      BLUE: 'bg-blue-200',
+                      RED: 'bg-red-200',
+                    }
+                    return (
+                      <mark
+                        key={sIdx}
+                        data-offset={seg.globalOffset}
+                        className={`${colorMap[seg.note.color]} text-inherit bg-opacity-70 rounded-sm px-0.5 mx-px cursor-pointer hover:opacity-80 transition-opacity`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const rect = e.target.getBoundingClientRect()
+                          setActiveNote({
+                            note: seg.note,
+                            rect: {
+                              top: rect.top - 40,
+                              left: rect.left + rect.width / 2,
+                            },
+                          })
+                          setSelectionRect(null)
+                        }}
+                      >
+                        {seg.text}
+                      </mark>
+                    )
+                  }
+                  return (
+                    <span key={sIdx} data-offset={seg.globalOffset}>
+                      {seg.text}
+                    </span>
+                  )
+                })}
               </p>
             ))}
           </div>
@@ -249,8 +526,34 @@ export const ReadingPageContent = ({
               </span>
             </button>
           ) : (
-            <div className="flex-1 flex items-center justify-center p-6 rounded-3xl bg-white/20 border border-[#83746d]/10 text-[#50443e]/40 font-bold italic shadow-sm">
-              Đã đọc hết tác phẩm
+            <div className="flex-1 flex flex-col items-center justify-center p-6 rounded-3xl bg-white/20 border border-[#83746d]/10 shadow-sm gap-4">
+              <span className="text-[#50443e]/40 font-bold italic">
+                Đã đọc hết tác phẩm
+              </span>
+              {!isCompleted && (
+                <button
+                  onClick={() => {
+                    setIsCompleted(true)
+                    upsertBookmark({
+                      workId: work.id,
+                      data: {
+                        currentSectionId: currentSection.id,
+                        position: currentSection.content?.length || 0,
+                        progressPercent: 100,
+                        isCompleted: true,
+                      },
+                    })
+                  }}
+                  className="px-6 py-2 bg-green-600 text-white rounded-full font-bold shadow hover:bg-green-700 transition"
+                >
+                  Đánh dấu hoàn thành
+                </button>
+              )}
+              {isCompleted && (
+                <span className="text-green-600 font-bold px-6 py-2 bg-green-50 rounded-full">
+                  ✓ Đã hoàn thành
+                </span>
+              )}
             </div>
           )}
         </div>

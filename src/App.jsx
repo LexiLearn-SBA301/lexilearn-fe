@@ -14,6 +14,7 @@ import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
+import { ChatWidget } from './components/common/ChatWidget'
 
 // Admin Pages
 import { WorkAdminPage } from './features/library/pages/WorkAdminPage'
@@ -66,6 +67,8 @@ export default function App() {
             </Routes>
           </div>
           <Footer />
+          {/* Chatbot dùng chung — nút nổi + popup, hiện mọi trang trừ trang đăng nhập */}
+          <ChatWidget />
         </main>
       </BrowserRouter>
     </QueryClientProvider>

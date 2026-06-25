@@ -7,10 +7,12 @@ import {
   useGetCharacters,
 } from '../hooks/useWorkSection'
 import { useWorkDetail } from '../hooks/useLibrary'
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { ReadingPageSidebar } from '../components/ReadingPageSidebar'
 import { ReadingPageContent } from '../components/ReadingPageContent'
-import { AIAssistantPopup } from '../components/AIAssistantPopup'
+import { useChatStore } from '../store/chat.store'
+import { useAuthStore } from '../../auth/store/auth.store'
+import { useGetBookmarks, useUpsertBookmark } from '../hooks/useReading'
 
 export const ReadingPage = () => {
   const { slug, sectionId } = useParams()
@@ -34,14 +36,162 @@ export const ReadingPage = () => {
     work?.id,
   )
 
+  const user = useAuthStore((s) => s.user)
+  const { data: bookmarks, isLoading: isBookmarksLoading } =
+    useGetBookmarks(!!user)
+  const { mutate: upsertBookmark } = useUpsertBookmark()
+
+  // Mở popup chatbot dùng chung (kèm sẵn đoạn văn bôi đen nếu có)
+  const openChat = useChatStore((s) => s.openChat)
+
   // States
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isAIOpen, setIsAIOpen] = useState(false) // Quản lý đóng mở AI Popup
-  const [aiPrompt, setAiPrompt] = useState('') // Lưu đoạn text bôi đen để gửi cho AI
   const [sidebarTab, setSidebarTab] = useState('muc-luc') // 'muc-luc' | 'nghe-thuat' | 'nhan-vat'
   const [scrollProgress, setScrollProgress] = useState(0)
   const [featureFilter, setFeatureFilter] = useState('ALL') // Lọc phần nghệ thuật
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false)
+  const [hasPromptedRestore, setHasPromptedRestore] = useState(false)
+  const [targetScrollRatio, setTargetScrollRatio] = useState(null)
+  const [isCompleted, setIsCompleted] = useState(false)
+
+  // --- RESTORE BOOKMARK LOGIC ---
+  useEffect(() => {
+    if (!work || !bookmarks || hasPromptedRestore || !user) return
+    const bookmark = bookmarks.find((b) => b.work?.id === work.id)
+
+    if (bookmark) {
+      // eslint-disable-next-line
+      setIsCompleted(bookmark.isCompleted)
+
+      if (!sectionId && bookmark.currentSection) {
+        // User opened book without specific section, restore automatically
+        setTargetScrollRatio(
+          bookmark.position / (currentSection?.content?.length || 1),
+        )
+        navigate(`/thu-vien/${slug}/doc/${bookmark.currentSection.id}`, {
+          replace: true,
+        })
+      } else if (
+        sectionId &&
+        bookmark.currentSection &&
+        bookmark.currentSection.id !== sectionId
+      ) {
+        // User navigated to a specific section different from bookmark
+        const wantsToRestore = window.confirm(
+          `Bạn đang đọc dở chương "${bookmark.currentSection.title}". Bạn có muốn tiếp tục đọc từ đó không?`,
+        )
+        if (wantsToRestore) {
+          setTargetScrollRatio(
+            bookmark.position / (currentSection?.content?.length || 1),
+          )
+          navigate(`/thu-vien/${slug}/doc/${bookmark.currentSection.id}`)
+        }
+      } else if (
+        sectionId &&
+        bookmark.currentSection &&
+        bookmark.currentSection.id === sectionId
+      ) {
+        setTargetScrollRatio(
+          bookmark.position / (currentSection?.content?.length || 1),
+        )
+      }
+    }
+    setHasPromptedRestore(true)
+  }, [
+    work,
+    bookmarks,
+    sectionId,
+    hasPromptedRestore,
+    navigate,
+    slug,
+    user,
+    currentSection,
+  ])
+
+  // Restore scroll when targetScrollRatio is set and content is ready
+  useEffect(() => {
+    if (targetScrollRatio !== null && scrollRef.current && currentSection) {
+      const timeout = setTimeout(() => {
+        const target = scrollRef.current
+        const scrollAmount =
+          (target.scrollHeight - target.clientHeight) * targetScrollRatio
+        if (scrollAmount > 0) {
+          target.scrollTo({ top: scrollAmount, behavior: 'smooth' })
+        }
+        setTargetScrollRatio(null)
+      }, 300) // Small delay to ensure text is rendered
+      return () => clearTimeout(timeout)
+    }
+  }, [targetScrollRatio, currentSection])
+
+  // --- SAVE PROGRESS LOGIC ---
+  const latestScrollRef = useRef(scrollProgress)
+  const isCompletedRef = useRef(isCompleted)
+  const bookmarksRef = useRef(bookmarks)
+
+  useEffect(() => {
+    latestScrollRef.current = scrollProgress
+  }, [scrollProgress])
+
+  useEffect(() => {
+    isCompletedRef.current = isCompleted
+  }, [isCompleted])
+
+  useEffect(() => {
+    bookmarksRef.current = bookmarks
+  }, [bookmarks])
+
+  useEffect(() => {
+    if (!user || !work || !currentSection || !bookmarks) return
+    if (isCompletedRef.current) return
+
+    const activeSection = currentSection
+
+    const saveProgress = () => {
+      if (!activeSection?.content || isCompletedRef.current) return
+
+      const existingBookmark = bookmarksRef.current?.find(
+        (b) => b.work?.id === work.id,
+      )
+
+      // Double check DB status to prevent race conditions during restore
+      if (existingBookmark?.isCompleted) return
+
+      const sp = latestScrollRef.current
+      const position = Math.floor(activeSection.content.length * (sp / 100))
+      const totalSections = sections?.length || 1
+      const currentIdx =
+        sections?.findIndex((s) => s.id === activeSection.id) || 0
+      const calculatedProgressPercent =
+        (currentIdx / totalSections) * 100 + (sp / 100 / totalSections) * 100
+
+      const maxProgress = existingBookmark?.progressPercent || 0
+      const finalProgressPercent = Math.max(
+        maxProgress,
+        calculatedProgressPercent,
+      )
+
+      upsertBookmark({
+        workId: work.id,
+        data: {
+          currentSectionId: activeSection.id,
+          position,
+          progressPercent: parseFloat(finalProgressPercent.toFixed(2)),
+          isCompleted: false,
+        },
+      })
+    }
+
+    // Auto-save progress every 5 seconds
+    const intervalId = setInterval(saveProgress, 5000)
+
+    // Save progress when user leaves or changes section
+    return () => {
+      clearInterval(intervalId)
+      saveProgress()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSection?.id, user, work?.id, sections?.length, upsertBookmark])
 
   // --- RESIZABLE SIDEBAR LOGIC ---
   const [sidebarWidth, setSidebarWidth] = useState(380) // Default width 380px (đẹp như hình)
@@ -94,9 +244,9 @@ export const ReadingPage = () => {
   }
 
   useEffect(() => {
-    if (scrollRef.current)
+    if (scrollRef.current && targetScrollRatio === null)
       scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' })
-  }, [currentSectionId])
+  }, [currentSectionId, targetScrollRatio])
 
   const currentIndex =
     sections?.findIndex((s) => s.id === currentSectionId) ?? -1
@@ -111,7 +261,12 @@ export const ReadingPage = () => {
     if (window.innerWidth < 1024) setIsSidebarOpen(false)
   }
 
-  if (isWorkLoading || isSectionsLoading || isSectionLoading) {
+  if (
+    isWorkLoading ||
+    isSectionsLoading ||
+    isSectionLoading ||
+    isBookmarksLoading
+  ) {
     return (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[#F4ECE1]">
         <Loader2 className="h-12 w-12 animate-spin text-[#ab3429]" />
@@ -162,37 +317,15 @@ export const ReadingPage = () => {
         isResizing={isResizing}
         scrollProgress={scrollProgress}
         handleNavigate={handleNavigate}
-        setIsAIOpen={setIsAIOpen}
-        setAiPrompt={setAiPrompt}
+        openChat={openChat}
+        targetScrollRatio={targetScrollRatio}
+        setTargetScrollRatio={setTargetScrollRatio}
+        isCompleted={isCompleted}
+        setIsCompleted={setIsCompleted}
+        upsertBookmark={upsertBookmark}
       />
 
-      {/* Nút Trợ lý AI (Góc Dưới Phải - Premium FAB) */}
-      <div className="fixed bottom-6 right-6 md:bottom-10 md:right-10 z-40">
-        {/* Vòng sáng Glowing background */}
-        <div className="absolute inset-0 bg-[#ab3429] rounded-full blur-xl opacity-30 animate-pulse"></div>
-        <button
-          onClick={() => setIsAIOpen(true)}
-          className="relative flex items-center justify-center w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-[#ab3429] to-[#6b1610] text-white rounded-full shadow-[0_8px_25px_rgba(171,52,41,0.5)] hover:shadow-[0_15px_35px_rgba(171,52,41,0.6)] hover:-translate-y-1 transition-all duration-300 group border border-white/20"
-          title="Hỏi Mộc Bản AI"
-        >
-          <Sparkles
-            size={26}
-            className="group-hover:rotate-12 group-hover:scale-110 transition-transform duration-500"
-          />
-        </button>
-      </div>
-
-      {/* TÍCH HỢP TRỢ LÝ AI (POPUP GÓC DƯỚI PHẢI) */}
-      <AIAssistantPopup
-        isOpen={isAIOpen}
-        onClose={() => {
-          setIsAIOpen(false)
-          setAiPrompt('')
-        }}
-        work={work}
-        currentSection={currentSection}
-        initialPrompt={aiPrompt}
-      />
+      {/* Nút nổi + popup chatbot do <ChatWidget /> ở App quản lý chung cho mọi trang */}
     </div>
   )
 }
