@@ -11,8 +11,9 @@ export const loginApi = async ({ email, password }) => {
 // Gọi API đăng ký, trả về toàn bộ ApiResponse (để lấy .message hướng dẫn OTP)
 // BE: POST /v1/auth/register → ApiResponse<Void> (HTTP 201, tài khoản UNVERIFIED, gửi OTP qua email)
 // KHÔNG trả token — user phải xác thực OTP trước khi đăng nhập được
-export const registerApi = async ({ email, password }) => {
+export const registerApi = async ({ fullName, email, password }) => {
   const response = await apiClient.post('/v1/auth/register', {
+    fullName,
     email,
     password,
   })
