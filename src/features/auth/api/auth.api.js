@@ -66,3 +66,12 @@ export const getMeApi = async () => {
   // response.data.result là UserResponse
   return response.data.result
 }
+
+// Gọi API làm mới token, trả về TokenResponse mới (accessToken, refreshToken, expiresIn)
+// BE: POST /v1/auth/refresh → ApiResponse<TokenResponse>
+// Lưu ý: hàm này dùng cho mục đích gọi thủ công (ví dụ debug). Response interceptor trong
+// api.js KHÔNG import hàm này — nó gọi thẳng axios để tránh đệ quy qua interceptor.
+export const refreshTokenApi = async ({ refreshToken }) => {
+  const response = await apiClient.post('/v1/auth/refresh', { refreshToken })
+  return response.data.result
+}
