@@ -33,10 +33,10 @@ export const RegisterPage = () => {
   })
 
   const onSubmit = (data) => {
-    // BE RegisterRequest chỉ nhận { email, password }
-    // fullName và confirmPassword chỉ dùng để validate phía client, không gửi lên BE
+    // BE RegisterRequest nhận { fullName, email, password }
+    // confirmPassword chỉ dùng để validate phía client, không gửi lên BE
     registerUser(
-      { email: data.email, password: data.password },
+      { fullName: data.fullName, email: data.email, password: data.password },
       {
         // Truyền email qua location.state vì API response không chứa email (ApiResponse<Void>)
         // VerifyOtpPage sẽ đọc email từ state để prefill và hiển thị hướng dẫn
