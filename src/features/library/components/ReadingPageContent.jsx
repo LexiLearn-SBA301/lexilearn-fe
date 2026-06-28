@@ -13,6 +13,9 @@ import {
   useCreateNote,
   useDeleteNote,
 } from '../hooks/useReading'
+import { useAuthStore } from '../../auth/store/auth.store'
+
+let sessionGuestNotes = []
 
 const getGlobalOffset = (node, offset) => {
   if (node.nodeType === 3) {
@@ -133,7 +136,15 @@ export const ReadingPageContent = ({
   const [selectedText, setSelectedText] = useState('')
   const [selectionRange, setSelectionRange] = useState(null)
 
-  const { data: notes } = useGetSectionNotes(currentSection?.id)
+  const user = useAuthStore((s) => s.user)
+  const [localNotes, setLocalNotes] = useState(sessionGuestNotes)
+
+  const { data: serverNotes } = useGetSectionNotes(currentSection?.id)
+  const notes = [
+    ...(serverNotes || []),
+    ...localNotes.filter((n) => n.sectionId === currentSection?.id),
+  ]
+
   const { mutate: createNote } = useCreateNote()
   const { mutate: deleteNote } = useDeleteNote()
   const [activeNote, setActiveNote] = useState(null)
@@ -182,16 +193,32 @@ export const ReadingPageContent = ({
 
   const handleCreateNote = (color) => {
     if (selectionRange && currentSection) {
-      createNote({
-        sectionId: currentSection.id,
-        data: {
+      if (user) {
+        createNote({
+          sectionId: currentSection.id,
+          data: {
+            startOffset: selectionRange.startOffset,
+            endOffset: selectionRange.endOffset,
+            highlightedText: selectedText,
+            userNote: null,
+            color: color,
+          },
+        })
+      } else {
+        const newNote = {
+          id: `local-${Date.now()}`,
+          sectionId: currentSection.id,
           startOffset: selectionRange.startOffset,
           endOffset: selectionRange.endOffset,
           highlightedText: selectedText,
-          userNote: null,
           color: color,
-        },
-      })
+        }
+        setLocalNotes((prev) => {
+          const next = [...prev, newNote]
+          sessionGuestNotes = next
+          return next
+        })
+      }
       setSelectionRect(null)
       window.getSelection()?.removeAllRanges()
     }
@@ -355,7 +382,17 @@ export const ReadingPageContent = ({
             <div className="flex items-center bg-white shadow-[0_8px_20px_rgba(0,0,0,0.15)] rounded-xl p-1.5 border border-black/5">
               <button
                 onClick={() => {
-                  deleteNote(activeNote.note.id)
+                  if (String(activeNote.note.id).startsWith('local-')) {
+                    setLocalNotes((prev) => {
+                      const next = prev.filter(
+                        (n) => n.id !== activeNote.note.id,
+                      )
+                      sessionGuestNotes = next
+                      return next
+                    })
+                  } else {
+                    deleteNote(activeNote.note.id)
+                  }
                   setActiveNote(null)
                 }}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all shadow-sm"
