@@ -32,61 +32,65 @@ export const fetchArtisticFeatures = async (workId) => {
 // -- ADMIN WORK SECTIONS --
 export const createWorkSection = async ({ workId, data }) => {
   const response = await apiClient.post(
-    `/v1/admin/works/${workId}/sections`,
+    `/v1/works/admin/${workId}/sections`,
     data,
   )
   return response.data.result
 }
-export const updateWorkSection = async ({ sectionId, data }) => {
+export const updateWorkSection = async ({ workId, sectionId, data }) => {
   const response = await apiClient.patch(
-    `/v1/admin/sections/${sectionId}`,
+    `/v1/works/admin/${workId}/sections/${sectionId}`,
     data,
   )
   return response.data.result
 }
-export const deleteWorkSection = async ({ sectionId }) => {
-  const response = await apiClient.delete(`/v1/admin/sections/${sectionId}`)
+export const deleteWorkSection = async ({ workId, sectionId }) => {
+  const response = await apiClient.delete(
+    `/v1/works/admin/${workId}/sections/${sectionId}`,
+  )
   return response.data
 }
 
 // -- ADMIN WORK CHARACTERS --
 export const createWorkCharacter = async ({ workId, data }) => {
   const response = await apiClient.post(
-    `/v1/admin/works/${workId}/characters`,
+    `/v1/works/admin/${workId}/characters`,
     data,
   )
   return response.data.result
 }
-export const updateWorkCharacter = async ({ characterId, data }) => {
+export const updateWorkCharacter = async ({ workId, characterId, data }) => {
   const response = await apiClient.patch(
-    `/v1/admin/characters/${characterId}`,
+    `/v1/works/admin/${workId}/characters/${characterId}`,
     data,
   )
   return response.data.result
 }
-export const deleteWorkCharacter = async ({ characterId }) => {
-  const response = await apiClient.delete(`/v1/admin/characters/${characterId}`)
+export const deleteWorkCharacter = async ({ workId, characterId }) => {
+  const response = await apiClient.delete(
+    `/v1/works/admin/${workId}/characters/${characterId}`,
+  )
   return response.data
 }
 
 // -- ADMIN ARTISTIC FEATURES --
 export const createArtisticFeature = async ({ workId, data }) => {
   const response = await apiClient.post(
-    `/v1/admin/works/${workId}/artistic-features`,
+    `/v1/works/admin/${workId}/artistic-features`,
     data,
   )
   return response.data.result
 }
-export const updateArtisticFeature = async ({ featureId, data }) => {
+export const updateArtisticFeature = async ({ workId, featureId, data }) => {
   const response = await apiClient.patch(
-    `/v1/admin/artistic-features/${featureId}`,
+    `/v1/works/admin/${workId}/artistic-features/${featureId}`,
     data,
   )
   return response.data.result
 }
-export const deleteArtisticFeature = async ({ featureId }) => {
+export const deleteArtisticFeature = async ({ workId, featureId }) => {
   const response = await apiClient.delete(
-    `/v1/admin/artistic-features/${featureId}`,
+    `/v1/works/admin/${workId}/artistic-features/${featureId}`,
   )
   return response.data
 }

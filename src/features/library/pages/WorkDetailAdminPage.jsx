@@ -161,11 +161,11 @@ export const WorkDetailAdminPage = () => {
 
     try {
       if (type === 'section')
-        await deleteSection.mutateAsync({ sectionId: item.id })
+        await deleteSection.mutateAsync({ workId: work.id, sectionId: item.id })
       if (type === 'character')
-        await deleteChar.mutateAsync({ characterId: item.id })
+        await deleteChar.mutateAsync({ workId: work.id, characterId: item.id })
       if (type === 'feature')
-        await deleteFeature.mutateAsync({ featureId: item.id })
+        await deleteFeature.mutateAsync({ workId: work.id, featureId: item.id })
     } finally {
       setDeleteData(null)
     }

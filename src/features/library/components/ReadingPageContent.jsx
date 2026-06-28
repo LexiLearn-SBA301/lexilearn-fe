@@ -1,13 +1,5 @@
-import { useState, useEffect } from 'react'
-import {
-  Book,
-  Eye,
-  Menu,
-  ChevronLeft,
-  ChevronRight,
-  Sparkles,
-  X,
-} from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Menu, ChevronLeft, ChevronRight, Sparkles, X } from 'lucide-react'
 import {
   useGetSectionNotes,
   useCreateNote,
@@ -48,15 +40,46 @@ const getGlobalOffset = (node, offset) => {
   return null
 }
 
+const renderTextWithHiddenTags = (text, baseOffset) => {
+  const parts = text.split(/(\[THO\]|\[\/THO\])/)
+  let currentOffset = baseOffset
+  return parts.map((part, i) => {
+    if (!part) return null
+    const offset = currentOffset
+    currentOffset += part.length
+    if (part === '[THO]' || part === '[/THO]') {
+      return (
+        <span key={i} data-offset={offset} style={{ display: 'none' }}>
+          {part}
+        </span>
+      )
+    }
+    return (
+      <span key={i} data-offset={offset}>
+        {part}
+      </span>
+    )
+  })
+}
+
 const getParagraphs = (content, notes) => {
   if (!content) return []
   const paragraphs = []
   let offset = 0
   const parts = content.split('\n\n')
 
+  let isInsidePoetry = false
+
   parts.forEach((p) => {
     const pStart = offset
     const pEnd = offset + p.length
+
+    const hasStartTag = p.includes('[THO]')
+    const hasEndTag = p.includes('[/THO]')
+
+    if (hasStartTag) isInsidePoetry = true
+    const currentIsPoetry = isInsidePoetry
+    if (hasEndTag) isInsidePoetry = false
 
     const overlappingNotes = (notes || []).filter(
       (n) => n.startOffset < pEnd && n.endOffset > pStart,
@@ -105,6 +128,7 @@ const getParagraphs = (content, notes) => {
     paragraphs.push({
       startOffset: pStart,
       segments,
+      isPoetry: currentIsPoetry,
     })
 
     offset += p.length + 2 // +2 for \n\n
@@ -137,6 +161,10 @@ export const ReadingPageContent = ({
   const { mutate: createNote } = useCreateNote()
   const { mutate: deleteNote } = useDeleteNote()
   const [activeNote, setActiveNote] = useState(null)
+
+  const parsedParagraphs = useMemo(() => {
+    return getParagraphs(currentSection?.content, notes)
+  }, [currentSection?.content, notes])
 
   const handleMouseUp = () => {
     const selection = window.getSelection()
@@ -231,13 +259,8 @@ export const ReadingPageContent = ({
 
   return (
     <main
-      className={`flex-1 flex flex-col min-h-screen relative z-10 ${isResizing ? '' : 'transition-[margin] duration-500 cubic-bezier(0.4,0,0.2,1)'}`}
-      style={{
-        marginLeft:
-          window.innerWidth >= 1024 && isSidebarOpen
-            ? `${sidebarWidth}px`
-            : '0px',
-      }}
+      className={`flex-1 flex flex-col min-h-screen relative z-10 ${isResizing ? '' : 'transition-[margin] duration-500 cubic-bezier(0.4,0,0.2,1)'} ${isSidebarOpen ? 'lg:ml-[var(--sidebar-width)]' : 'ml-0'}`}
+      style={{ '--sidebar-width': `${sidebarWidth}px` }}
     >
       {/* Header Nổi */}
       <header className="sticky top-0 z-30 bg-white/60 backdrop-blur-xl border-b border-white/40 px-4 md:px-8 py-4 flex items-center justify-between shadow-[0_4px_30px_rgba(0,0,0,0.03)] transition-all">
@@ -380,112 +403,82 @@ export const ReadingPageContent = ({
             {currentSection?.title || `Chương ${currentSection?.number}`}
           </h2>
 
-          {/* Lượt xem và thời gian đọc */}
-          <div className="mt-8 flex justify-center items-center gap-8 text-sm text-[#83746d] font-medium">
-            <div className="flex items-center gap-2">
-              <Book size={18} /> 12 phút đọc
-            </div>
-            <div className="flex items-center gap-2">
-              <Eye size={18} /> 45,201 lượt xem
-            </div>
+          <div className="mt-10 mb-2 flex items-center justify-center gap-4 opacity-80">
+            <div className="w-16 md:w-32 h-[1px] bg-gradient-to-r from-transparent to-[#ab3429]/60"></div>
+            <div className="w-1.5 h-1.5 rotate-45 bg-[#ab3429]"></div>
+            <div className="w-16 md:w-32 h-[1px] bg-gradient-to-l from-transparent to-[#ab3429]/60"></div>
           </div>
-          <div className="w-20 h-[2px] bg-gradient-to-r from-transparent via-[#ab3429]/30 to-transparent mx-auto mt-8"></div>
         </div>
 
         {/* Typography chuẩn mực: Phân loại Thơ và Văn xuôi */}
-        {currentSection?.contentType === 'POETRY' ? (
-          <div className="flex justify-center my-12 w-full">
-            <div className="font-quote text-lg md:text-xl text-[#231a0c] leading-[2.2] tracking-wide whitespace-pre-wrap italic opacity-95">
-              {getParagraphs(currentSection?.content, notes).map((p, pIdx) => (
-                <div key={pIdx} className="mb-6">
-                  {p.segments.map((seg, sIdx) => {
-                    if (seg.isMark) {
-                      const colorMap = {
-                        YELLOW: 'bg-yellow-200',
-                        GREEN: 'bg-green-200',
-                        BLUE: 'bg-blue-200',
-                        RED: 'bg-red-200',
-                      }
-                      return (
-                        <mark
-                          key={sIdx}
-                          data-offset={seg.globalOffset}
-                          className={`${colorMap[seg.note.color]} text-inherit bg-opacity-70 rounded-sm px-0.5 mx-px cursor-pointer hover:opacity-80 transition-opacity`}
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            const rect = e.target.getBoundingClientRect()
-                            setActiveNote({
-                              note: seg.note,
-                              rect: {
-                                top: rect.top - 40,
-                                left: rect.left + rect.width / 2,
-                              },
-                            })
-                            setSelectionRect(null)
-                          }}
-                        >
-                          {seg.text}
-                        </mark>
-                      )
-                    }
-                    return (
-                      <span key={sIdx} data-offset={seg.globalOffset}>
-                        {seg.text}
-                      </span>
-                    )
-                  })}
+        <div
+          className={`w-full ${
+            currentSection?.contentType !== 'POETRY'
+              ? 'prose prose-lg md:prose-xl text-lg md:text-xl max-w-none text-[#231a0c] font-quote leading-[2.2] tracking-wide text-justify hyphens-auto first-letter:text-[72px] first-letter:font-title first-letter:font-black first-letter:text-[#ab3429] first-letter:mr-2 first-letter:float-left first-letter:mt-1 first-letter:leading-[0.85] first-letter:[text-shadow:2px_2px_4px_rgba(171,52,41,0.25)]'
+              : ''
+          }`}
+        >
+          {parsedParagraphs.map((p, pIdx) => {
+            const isPoetry =
+              currentSection?.contentType === 'POETRY' ||
+              (currentSection?.contentType === 'MIXED' && p.isPoetry)
+
+            const renderSegments = p.segments.map((seg, sIdx) => {
+              if (seg.isMark) {
+                const colorMap = {
+                  YELLOW: 'bg-yellow-200',
+                  GREEN: 'bg-green-200',
+                  BLUE: 'bg-blue-200',
+                  RED: 'bg-red-200',
+                }
+                return (
+                  <mark
+                    key={sIdx}
+                    data-offset={seg.globalOffset}
+                    className={`${colorMap[seg.note.color]} text-inherit bg-opacity-70 rounded-sm px-0.5 mx-px cursor-pointer hover:opacity-80 transition-opacity`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      const rect = e.target.getBoundingClientRect()
+                      setActiveNote({
+                        note: seg.note,
+                        rect: {
+                          top: rect.top - 40,
+                          left: rect.left + rect.width / 2,
+                        },
+                      })
+                      setSelectionRect(null)
+                    }}
+                  >
+                    {renderTextWithHiddenTags(seg.text, seg.globalOffset)}
+                  </mark>
+                )
+              }
+              return (
+                <span key={sIdx}>
+                  {renderTextWithHiddenTags(seg.text, seg.globalOffset)}
+                </span>
+              )
+            })
+
+            if (isPoetry) {
+              return (
+                <div key={pIdx} className="flex justify-center my-8 w-full">
+                  <div className="font-quote text-lg md:text-xl text-[#501b17] leading-[1.8] tracking-wide whitespace-pre-wrap italic opacity-95 text-left min-w-[200px] border-l-2 border-[#ab3429]/30 pl-6 py-2 relative">
+                    <div className="absolute -left-[5px] top-0 w-2 h-2 rounded-full bg-[#ab3429]/20" />
+                    <div className="absolute -left-[5px] bottom-0 w-2 h-2 rounded-full bg-[#ab3429]/20" />
+                    {renderSegments}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div
-            className="prose prose-lg md:prose-xl max-w-none text-[#231a0c] font-quote leading-[2.2] tracking-wide text-justify
-                          first-letter:text-[72px] first-letter:font-title first-letter:font-black first-letter:text-[#ab3429] 
-                          first-letter:mr-2 first-letter:float-left first-letter:mt-1 first-letter:leading-[0.85]"
-          >
-            {getParagraphs(currentSection?.content, notes).map((p, pIdx) => (
-              <p key={pIdx} className="mb-6">
-                {p.segments.map((seg, sIdx) => {
-                  if (seg.isMark) {
-                    const colorMap = {
-                      YELLOW: 'bg-yellow-200',
-                      GREEN: 'bg-green-200',
-                      BLUE: 'bg-blue-200',
-                      RED: 'bg-red-200',
-                    }
-                    return (
-                      <mark
-                        key={sIdx}
-                        data-offset={seg.globalOffset}
-                        className={`${colorMap[seg.note.color]} text-inherit bg-opacity-70 rounded-sm px-0.5 mx-px cursor-pointer hover:opacity-80 transition-opacity`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          const rect = e.target.getBoundingClientRect()
-                          setActiveNote({
-                            note: seg.note,
-                            rect: {
-                              top: rect.top - 40,
-                              left: rect.left + rect.width / 2,
-                            },
-                          })
-                          setSelectionRect(null)
-                        }}
-                      >
-                        {seg.text}
-                      </mark>
-                    )
-                  }
-                  return (
-                    <span key={sIdx} data-offset={seg.globalOffset}>
-                      {seg.text}
-                    </span>
-                  )
-                })}
-              </p>
-            ))}
-          </div>
-        )}
+              )
+            } else {
+              return (
+                <p key={pIdx} className="mb-6">
+                  {renderSegments}
+                </p>
+              )
+            }
+          })}
+        </div>
 
         {/* Nút Điều hướng Cuối bài */}
         <div className="mt-28 pt-10 border-t border-[#83746d]/20 flex flex-col sm:flex-row items-stretch justify-between gap-6">

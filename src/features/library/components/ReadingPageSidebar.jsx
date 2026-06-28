@@ -90,7 +90,7 @@ export const ReadingPageSidebar = ({
         className={`fixed top-0 left-0 h-full bg-[#FAF3E7]/95 backdrop-blur-xl border-r border-[#83746d]/20 shadow-[20px_0_40px_rgba(0,0,0,0.05)] z-50 flex flex-col transition-transform duration-500 cubic-bezier(0.4, 0, 0.2, 1)
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
-        style={{ width: `${sidebarWidth}px` }}
+        style={{ width: `${sidebarWidth}px`, maxWidth: '85vw' }}
       >
         {/* DRAG HANDLE BÊN PHẢI (Để kéo giãn kích thước Sidebar) */}
         <div

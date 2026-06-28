@@ -261,6 +261,31 @@ export const ReadingPage = () => {
     if (window.innerWidth < 1024) setIsSidebarOpen(false)
   }
 
+  // Lắng nghe sự kiện chuyển trang bằng phím mũi tên
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Bỏ qua nếu người dùng đang gõ phím vào input/textarea (ví dụ chat AI)
+      if (
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.isContentEditable
+      ) {
+        return
+      }
+
+      if (e.key === 'ArrowLeft' && prevSection) {
+        e.preventDefault()
+        handleNavigate(prevSection.id)
+      } else if (e.key === 'ArrowRight' && nextSection) {
+        e.preventDefault()
+        handleNavigate(nextSection.id)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [prevSection?.id, nextSection?.id])
+
   if (
     isWorkLoading ||
     isSectionsLoading ||

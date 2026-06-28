@@ -14,6 +14,7 @@ import {
   Star,
   ChevronDown,
   Check,
+  Eye,
 } from 'lucide-react'
 import { useEffect, useState, useRef } from 'react'
 
@@ -201,6 +202,73 @@ export const SectionFormDialog = ({
   }, [isOpen, data, reset])
 
   const contentType = watch('contentType')
+  const [isPreviewMode, setIsPreviewMode] = useState(false)
+
+  const contentRef = useRef(null)
+  const { ref: registerRef, ...restRegister } = register('content')
+
+  const handleInsertPoetry = () => {
+    const textarea = contentRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const currentValue = watch('content') || ''
+
+    const selectedText = currentValue.substring(start, end)
+    const newText = `${currentValue.substring(0, start)}\n[THO]\n${selectedText || 'Nhập thơ vào đây...'}\n[/THO]\n${currentValue.substring(end)}`
+
+    setValue('content', newText, { shouldValidate: true })
+
+    setTimeout(() => {
+      textarea.focus()
+      const newCursorPos = start + 7 // length of '\n[THO]\n'
+      textarea.setSelectionRange(
+        newCursorPos,
+        newCursorPos + (selectedText.length || 19),
+      )
+    }, 0)
+  }
+
+  const renderPreview = (content) => {
+    if (!content)
+      return (
+        <div className="text-on-surface-variant italic text-sm text-center">
+          Chưa có nội dung...
+        </div>
+      )
+
+    const parts = content.split('\n\n')
+    let isPoetry = false
+
+    return parts.map((p, i) => {
+      if (p.includes('[THO]')) isPoetry = true
+      const currentIsPoetry = isPoetry
+      if (p.includes('[/THO]')) isPoetry = false
+
+      const cleanText = p.replace(/\[THO\]/g, '').replace(/\[\/THO\]/g, '')
+      if (!cleanText.trim()) return null
+
+      if (currentIsPoetry) {
+        return (
+          <div
+            key={i}
+            className="font-quote italic whitespace-pre-wrap text-center my-6 text-lg text-[#231a0c]"
+          >
+            {cleanText}
+          </div>
+        )
+      }
+      return (
+        <p
+          key={i}
+          className="mb-6 text-justify text-[#231a0c] leading-relaxed font-quote text-lg"
+        >
+          {cleanText}
+        </p>
+      )
+    })
+  }
 
   return (
     <DialogWrapper
@@ -261,16 +329,61 @@ export const SectionFormDialog = ({
           icon={AlignLeft}
           error={errors.content}
         >
-          <textarea
-            {...register('content')}
-            rows={contentType === 'POETRY' ? 12 : 8}
-            className={`${inputClasses(errors.content)} resize-y leading-relaxed ${contentType === 'POETRY' ? 'text-center font-serif italic' : ''}`}
-            placeholder={
-              contentType === 'POETRY'
-                ? 'Nhập thơ vào đây...\nMỗi câu một dòng...'
-                : 'Nhập nội dung văn xuôi vào đây...'
-            }
-          />
+          {contentType === 'MIXED' && (
+            <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between bg-surface-container-low p-2.5 rounded-xl border border-outline-variant/30 gap-2">
+              <span className="text-[11px] text-on-surface-variant italic leading-tight flex-1">
+                💡 <b>Mẹo Hỗn hợp:</b> Bôi đen chữ và bấm nút bên phải để bọc
+                thẻ định dạng Thơ
+              </span>
+              <div className="flex items-center gap-2 self-end sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsPreviewMode(!isPreviewMode)}
+                  className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                    isPreviewMode
+                      ? 'bg-primary text-on-primary'
+                      : 'bg-primary/10 text-primary hover:bg-primary/20'
+                  }`}
+                >
+                  <Eye size={14} />{' '}
+                  {isPreviewMode ? 'Tiếp tục Viết' : 'Xem trước'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleInsertPoetry}
+                  disabled={isPreviewMode}
+                  className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                    isPreviewMode
+                      ? 'opacity-50 cursor-not-allowed bg-outline-variant/20 text-on-surface-variant'
+                      : 'bg-[#ab3429]/10 text-[#ab3429] hover:bg-[#ab3429]/20'
+                  }`}
+                >
+                  <Feather size={14} /> Chèn thẻ [THO]
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isPreviewMode && contentType === 'MIXED' ? (
+            <div className="border border-outline-variant/30 rounded-xl p-6 min-h-[220px] max-h-[400px] overflow-y-auto bg-[#fff9ef] shadow-inner paper-texture">
+              {renderPreview(watch('content'))}
+            </div>
+          ) : (
+            <textarea
+              {...restRegister}
+              ref={(e) => {
+                registerRef(e)
+                contentRef.current = e
+              }}
+              rows={contentType === 'POETRY' ? 12 : 8}
+              className={`${inputClasses(errors.content)} resize-y leading-relaxed ${contentType === 'POETRY' ? 'text-center font-serif italic' : ''}`}
+              placeholder={
+                contentType === 'POETRY'
+                  ? 'Nhập thơ vào đây...\nMỗi câu một dòng...'
+                  : 'Nhập nội dung văn xuôi vào đây...'
+              }
+            />
+          )}
         </Field>
 
         <div className="pt-6 flex justify-end gap-3 border-t border-outline-variant/20">

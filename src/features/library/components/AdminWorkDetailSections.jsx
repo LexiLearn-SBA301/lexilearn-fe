@@ -51,7 +51,7 @@ export const AdminWorkDetailSections = ({
                         Chương {section.number}
                       </span>
                       <span
-                        className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase rounded-md ${section.contentType === 'POETRY' ? 'bg-blue-500/10 text-blue-600' : section.contentType === 'MIXED' ? 'bg-purple-500/10 text-purple-600' : 'bg-[#ab3429]/10 text-[#ab3429]'}`}
+                        className={`inline-block px-2 py-0.5 text-[10px] font-bold uppercase rounded-md ${section.contentType === 'POETRY' ? 'bg-sky-800/10 text-sky-800' : section.contentType === 'MIXED' ? 'bg-violet-800/10 text-violet-800' : 'bg-[#ab3429]/10 text-[#ab3429]'}`}
                       >
                         {section.contentType === 'POETRY'
                           ? 'Thơ'
