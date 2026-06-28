@@ -11,8 +11,9 @@ export const loginApi = async ({ email, password }) => {
 // Gọi API đăng ký, trả về toàn bộ ApiResponse (để lấy .message hướng dẫn OTP)
 // BE: POST /v1/auth/register → ApiResponse<Void> (HTTP 201, tài khoản UNVERIFIED, gửi OTP qua email)
 // KHÔNG trả token — user phải xác thực OTP trước khi đăng nhập được
-export const registerApi = async ({ email, password }) => {
+export const registerApi = async ({ fullName, email, password }) => {
   const response = await apiClient.post('/v1/auth/register', {
+    fullName,
     email,
     password,
   })
@@ -63,5 +64,14 @@ export const resetPasswordApi = async ({ email, otp, newPassword }) => {
 export const getMeApi = async () => {
   const response = await apiClient.get('/v1/auth/me')
   // response.data.result là UserResponse
+  return response.data.result
+}
+
+// Gọi API làm mới token, trả về TokenResponse mới (accessToken, refreshToken, expiresIn)
+// BE: POST /v1/auth/refresh → ApiResponse<TokenResponse>
+// Lưu ý: hàm này dùng cho mục đích gọi thủ công (ví dụ debug). Response interceptor trong
+// api.js KHÔNG import hàm này — nó gọi thẳng axios để tránh đệ quy qua interceptor.
+export const refreshTokenApi = async ({ refreshToken }) => {
+  const response = await apiClient.post('/v1/auth/refresh', { refreshToken })
   return response.data.result
 }

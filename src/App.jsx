@@ -21,6 +21,7 @@ import { WorkAdminPage } from './features/library/pages/WorkAdminPage'
 import { WorkDetailAdminPage } from './features/library/pages/WorkDetailAdminPage'
 import { AuthorAdminPage } from './features/author/pages/AuthorAdminPage'
 import { TagAdminPage } from './features/tag/pages/TagAdminPage'
+import { AdminRoute } from './components/common/AdminRoute'
 // Khởi tạo một instance của QueryClient
 const queryClient = new QueryClient()
 
@@ -51,19 +52,20 @@ export default function App() {
               <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
               <Route path="/dat-lai-mat-khau" element={<ResetPasswordPage />} />
               {/* --- ADMIN ROUTES --- */}
-              <Route
-                path="/admin"
-                element={<Navigate to="/admin/thu-vien" replace />}
-              />
-
-              {/* 2. Các trang giữ nguyên như cũ của bác */}
-              <Route path="/admin/tac-gia" element={<AuthorAdminPage />} />
-              <Route path="/admin/thu-vien" element={<WorkAdminPage />} />
-              <Route
-                path="/admin/thu-vien/:slug/chi-tiet"
-                element={<WorkDetailAdminPage />}
-              />
-              <Route path="/admin/the" element={<TagAdminPage />} />
+              <Route element={<AdminRoute />}>
+                <Route
+                  path="/admin"
+                  element={<Navigate to="/admin/thu-vien" replace />}
+                />
+                {/* 2. Các trang giữ nguyên như cũ của bác */}
+                <Route path="/admin/tac-gia" element={<AuthorAdminPage />} />
+                <Route path="/admin/thu-vien" element={<WorkAdminPage />} />
+                <Route
+                  path="/admin/thu-vien/:slug/chi-tiet"
+                  element={<WorkDetailAdminPage />}
+                />
+                <Route path="/admin/the" element={<TagAdminPage />} />
+              </Route>
             </Routes>
           </div>
           <Footer />

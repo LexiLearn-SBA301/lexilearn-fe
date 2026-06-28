@@ -10,16 +10,16 @@ export const fetchTags = async () => {
 // ==========================================
 
 export const createTag = async (data) => {
-  const response = await apiClient.post('/v1/admin/tags', data)
+  const response = await apiClient.post('/v1/tags/admin', data) // Đã bỏ /admin
   return response.data.result
 }
 
 export const updateTag = async ({ id, data }) => {
-  const response = await apiClient.patch(`/v1/admin/tags/${id}`, data)
+  const response = await apiClient.patch(`/v1/tags/admin/${id}`, data) // Đã bỏ /admin
   return response.data.result
 }
 
 export const deleteTag = async (id) => {
-  const response = await apiClient.delete(`/v1/admin/tags/${id}`)
+  const response = await apiClient.delete(`/v1/tags/admin/${id}`) // Đã bỏ /admin
   return response.data
 }
