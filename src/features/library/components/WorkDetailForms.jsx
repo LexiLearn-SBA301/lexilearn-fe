@@ -61,7 +61,7 @@ const DialogWrapper = ({
             <X size={20} />
           </button>
         </div>
-        <div className="p-6 md:p-8 overflow-y-auto bg-white/50 custom-scrollbar">
+        <div className="flex flex-col flex-1 overflow-hidden bg-white/50">
           {children}
         </div>
       </div>
@@ -278,115 +278,122 @@ export const SectionFormDialog = ({
       subtitle="Quản lý trích đoạn văn xuôi hoặc thơ ca"
       icon={BookOpen}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-          <div className="md:col-span-4">
-            <Field
-              label="Số thứ tự (Tùy chọn)"
-              icon={Hash}
-              error={errors.number}
-            >
-              <input
-                type="number"
-                placeholder="Tự động"
-                {...register('number', { valueAsNumber: true })}
-                className={inputClasses(errors.number)}
-              />
-            </Field>
-          </div>
-          <div className="md:col-span-8">
-            <Field label="Định dạng" icon={Layers} error={errors.contentType}>
-              <CustomSelect
-                options={[
-                  { value: 'PROSE', label: 'Văn xuôi (Đoạn văn tiêu chuẩn)' },
-                  { value: 'POETRY', label: 'Thơ ca (Giữ nguyên xuống dòng)' },
-                  { value: 'MIXED', label: 'Hỗn hợp' },
-                ]}
-                value={watch('contentType')}
-                onChange={(val) =>
-                  setValue('contentType', val, { shouldValidate: true })
-                }
-                error={errors.contentType}
-              />
-            </Field>
-          </div>
-        </div>
-
-        <Field
-          label="Tiêu đề chương (Tùy chọn)"
-          icon={Type}
-          error={errors.title}
-        >
-          <input
-            {...register('title')}
-            placeholder="Ví dụ: Cảnh ngày xuân, Đoạn trích Trao Duyên..."
-            className={inputClasses(errors.title)}
-          />
-        </Field>
-
-        <Field
-          label="Nội dung chi tiết"
-          icon={AlignLeft}
-          error={errors.content}
-        >
-          {contentType === 'MIXED' && (
-            <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between bg-surface-container-low p-2.5 rounded-xl border border-outline-variant/30 gap-2">
-              <span className="text-[11px] text-on-surface-variant italic leading-tight flex-1">
-                💡 <b>Mẹo Hỗn hợp:</b> Bôi đen chữ và bấm nút bên phải để bọc
-                thẻ định dạng Thơ
-              </span>
-              <div className="flex items-center gap-2 self-end sm:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setIsPreviewMode(!isPreviewMode)}
-                  className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-                    isPreviewMode
-                      ? 'bg-primary text-on-primary'
-                      : 'bg-primary/10 text-primary hover:bg-primary/20'
-                  }`}
-                >
-                  <Eye size={14} />{' '}
-                  {isPreviewMode ? 'Tiếp tục Viết' : 'Xem trước'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleInsertPoetry}
-                  disabled={isPreviewMode}
-                  className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
-                    isPreviewMode
-                      ? 'opacity-50 cursor-not-allowed bg-outline-variant/20 text-on-surface-variant'
-                      : 'bg-[#ab3429]/10 text-[#ab3429] hover:bg-[#ab3429]/20'
-                  }`}
-                >
-                  <Feather size={14} /> Chèn thẻ [THO]
-                </button>
-              </div>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex flex-col flex-1 overflow-hidden"
+      >
+        <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+            <div className="md:col-span-4">
+              <Field
+                label="Số thứ tự (Tùy chọn)"
+                icon={Hash}
+                error={errors.number}
+              >
+                <input
+                  type="number"
+                  placeholder="Tự động"
+                  {...register('number', { valueAsNumber: true })}
+                  className={inputClasses(errors.number)}
+                />
+              </Field>
             </div>
-          )}
-
-          {isPreviewMode && contentType === 'MIXED' ? (
-            <div className="border border-outline-variant/30 rounded-xl p-6 min-h-[220px] max-h-[400px] overflow-y-auto bg-[#fff9ef] shadow-inner paper-texture">
-              {renderPreview(watch('content'))}
+            <div className="md:col-span-8">
+              <Field label="Định dạng" icon={Layers} error={errors.contentType}>
+                <CustomSelect
+                  options={[
+                    { value: 'PROSE', label: 'Văn xuôi (Đoạn văn tiêu chuẩn)' },
+                    {
+                      value: 'POETRY',
+                      label: 'Thơ ca (Giữ nguyên xuống dòng)',
+                    },
+                    { value: 'MIXED', label: 'Hỗn hợp' },
+                  ]}
+                  value={watch('contentType')}
+                  onChange={(val) =>
+                    setValue('contentType', val, { shouldValidate: true })
+                  }
+                  error={errors.contentType}
+                />
+              </Field>
             </div>
-          ) : (
-            <textarea
-              {...restRegister}
-              ref={(e) => {
-                registerRef(e)
-                contentRef.current = e
-              }}
-              rows={contentType === 'POETRY' ? 12 : 8}
-              className={`${inputClasses(errors.content)} resize-y leading-relaxed ${contentType === 'POETRY' ? 'text-center font-serif italic' : ''}`}
-              placeholder={
-                contentType === 'POETRY'
-                  ? 'Nhập thơ vào đây...\nMỗi câu một dòng...'
-                  : 'Nhập nội dung văn xuôi vào đây...'
-              }
+          </div>
+
+          <Field
+            label="Tiêu đề chương (Tùy chọn)"
+            icon={Type}
+            error={errors.title}
+          >
+            <input
+              {...register('title')}
+              placeholder="Ví dụ: Cảnh ngày xuân, Đoạn trích Trao Duyên..."
+              className={inputClasses(errors.title)}
             />
-          )}
-        </Field>
+          </Field>
 
-        <div className="pt-6 flex justify-end gap-3 border-t border-outline-variant/20">
+          <Field
+            label="Nội dung chi tiết"
+            icon={AlignLeft}
+            error={errors.content}
+          >
+            {contentType === 'MIXED' && (
+              <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between bg-surface-container-low p-2.5 rounded-xl border border-outline-variant/30 gap-2">
+                <span className="text-[11px] text-on-surface-variant italic leading-tight flex-1">
+                  💡 <b>Mẹo Hỗn hợp:</b> Bôi đen chữ và bấm nút bên phải để bọc
+                  thẻ định dạng Thơ
+                </span>
+                <div className="flex items-center gap-2 self-end sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={() => setIsPreviewMode(!isPreviewMode)}
+                    className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                      isPreviewMode
+                        ? 'bg-primary text-on-primary'
+                        : 'bg-primary/10 text-primary hover:bg-primary/20'
+                    }`}
+                  >
+                    <Eye size={14} />{' '}
+                    {isPreviewMode ? 'Tiếp tục Viết' : 'Xem trước'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleInsertPoetry}
+                    disabled={isPreviewMode}
+                    className={`text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+                      isPreviewMode
+                        ? 'opacity-50 cursor-not-allowed bg-outline-variant/20 text-on-surface-variant'
+                        : 'bg-[#ab3429]/10 text-[#ab3429] hover:bg-[#ab3429]/20'
+                    }`}
+                  >
+                    <Feather size={14} /> Chèn thẻ [THO]
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isPreviewMode && contentType === 'MIXED' ? (
+              <div className="border border-outline-variant/30 rounded-xl p-6 min-h-[220px] max-h-[400px] overflow-y-auto bg-[#fff9ef] shadow-inner paper-texture">
+                {renderPreview(watch('content'))}
+              </div>
+            ) : (
+              <textarea
+                {...restRegister}
+                ref={(e) => {
+                  registerRef(e)
+                  contentRef.current = e
+                }}
+                rows={contentType === 'POETRY' ? 12 : 8}
+                className={`${inputClasses(errors.content)} resize-y leading-relaxed ${contentType === 'POETRY' ? 'text-center font-quote italic text-[#231a0c]' : ''}`}
+                placeholder={
+                  contentType === 'POETRY'
+                    ? 'Nhập thơ vào đây...\nMỗi câu một dòng...'
+                    : 'Nhập nội dung văn xuôi vào đây...'
+                }
+              />
+            )}
+          </Field>
+        </div>
+        <div className="p-4 md:px-8 md:py-5 bg-[#fff9ef] border-t border-outline-variant/20 shrink-0 flex justify-end gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
           <button
             type="button"
             onClick={onClose}
@@ -451,63 +458,67 @@ export const CharacterFormDialog = ({
       subtitle="Khai báo tuyến nhân vật trong tác phẩm"
       icon={Star}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-          <div className="md:col-span-8">
-            <Field label="Tên nhân vật" icon={Type} error={errors.name}>
-              <input
-                {...register('name')}
-                placeholder="Ví dụ: Thúy Kiều, Lão Hạc..."
-                className={inputClasses(errors.name)}
-              />
-            </Field>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex flex-col flex-1 overflow-hidden"
+      >
+        <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+            <div className="md:col-span-8">
+              <Field label="Tên nhân vật" icon={Type} error={errors.name}>
+                <input
+                  {...register('name')}
+                  placeholder="Ví dụ: Thúy Kiều, Lão Hạc..."
+                  className={inputClasses(errors.name)}
+                />
+              </Field>
+            </div>
+            <div className="md:col-span-4">
+              <Field label="Vai trò" icon={Star} error={errors.roleType}>
+                <CustomSelect
+                  options={[
+                    { value: 'MAIN', label: 'Nhân vật chính' },
+                    { value: 'SUPPORTING', label: 'Nhân vật phụ/hỗ trợ' },
+                    { value: 'ANTAGONIST', label: 'Nhân vật phản diện' },
+                    { value: 'NARRATOR', label: 'Người kể chuyện' },
+                  ]}
+                  value={watch('roleType')}
+                  onChange={(val) =>
+                    setValue('roleType', val, { shouldValidate: true })
+                  }
+                  error={errors.roleType}
+                />
+              </Field>
+            </div>
           </div>
-          <div className="md:col-span-4">
-            <Field label="Vai trò" icon={Star} error={errors.roleType}>
-              <CustomSelect
-                options={[
-                  { value: 'MAIN', label: 'Nhân vật chính' },
-                  { value: 'SUPPORTING', label: 'Nhân vật phụ/hỗ trợ' },
-                  { value: 'ANTAGONIST', label: 'Nhân vật phản diện' },
-                  { value: 'NARRATOR', label: 'Người kể chuyện' },
-                ]}
-                value={watch('roleType')}
-                onChange={(val) =>
-                  setValue('roleType', val, { shouldValidate: true })
-                }
-                error={errors.roleType}
-              />
-            </Field>
-          </div>
+
+          <Field
+            label="Mô tả ngắn gọn"
+            icon={AlignLeft}
+            error={errors.description}
+          >
+            <textarea
+              {...register('description')}
+              rows={3}
+              placeholder="Tóm tắt tính cách, hoàn cảnh xuất thân..."
+              className={inputClasses(errors.description)}
+            />
+          </Field>
+
+          <Field
+            label="Phân tích chuyên sâu (Tùy chọn)"
+            icon={BookOpen}
+            error={errors.analysis}
+          >
+            <textarea
+              {...register('analysis')}
+              rows={5}
+              placeholder="Nhập bài phân tích, đánh giá về nhân vật này..."
+              className={inputClasses(errors.analysis)}
+            />
+          </Field>
         </div>
-
-        <Field
-          label="Mô tả ngắn gọn"
-          icon={AlignLeft}
-          error={errors.description}
-        >
-          <textarea
-            {...register('description')}
-            rows={3}
-            placeholder="Tóm tắt tính cách, hoàn cảnh xuất thân..."
-            className={inputClasses(errors.description)}
-          />
-        </Field>
-
-        <Field
-          label="Phân tích chuyên sâu (Tùy chọn)"
-          icon={BookOpen}
-          error={errors.analysis}
-        >
-          <textarea
-            {...register('analysis')}
-            rows={5}
-            placeholder="Nhập bài phân tích, đánh giá về nhân vật này..."
-            className={inputClasses(errors.analysis)}
-          />
-        </Field>
-
-        <div className="pt-6 flex justify-end gap-3 border-t border-outline-variant/20">
+        <div className="p-4 md:px-8 md:py-5 bg-[#fff9ef] border-t border-outline-variant/20 shrink-0 flex justify-end gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
           <button
             type="button"
             onClick={onClose}
@@ -572,55 +583,66 @@ export const ArtisticFeatureFormDialog = ({
       subtitle="Phân tích các thủ pháp nghệ thuật được sử dụng"
       icon={FileType}
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-          <div className="md:col-span-4">
-            <Field
-              label="Loại thủ pháp"
-              icon={Layers}
-              error={errors.featureType}
-            >
-              <CustomSelect
-                options={[
-                  { value: 'NARRATIVE', label: 'Nghệ thuật kể chuyện (Tự sự)' },
-                  { value: 'LANGUAGE', label: 'Ngôn ngữ & Từ vựng' },
-                  { value: 'IMAGERY', label: 'Hình ảnh & Miêu tả' },
-                  { value: 'STRUCTURE', label: 'Cấu trúc & Bố cục' },
-                  { value: 'SYMBOLISM', label: 'Biểu tượng & Ẩn dụ' },
-                ]}
-                value={watch('featureType')}
-                onChange={(val) =>
-                  setValue('featureType', val, { shouldValidate: true })
-                }
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex flex-col flex-1 overflow-hidden"
+      >
+        <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+            <div className="md:col-span-4">
+              <Field
+                label="Loại thủ pháp"
+                icon={Layers}
                 error={errors.featureType}
-              />
-            </Field>
+              >
+                <CustomSelect
+                  options={[
+                    {
+                      value: 'NARRATIVE',
+                      label: 'Nghệ thuật kể chuyện (Tự sự)',
+                    },
+                    { value: 'LANGUAGE', label: 'Ngôn ngữ & Từ vựng' },
+                    { value: 'IMAGERY', label: 'Hình ảnh & Miêu tả' },
+                    { value: 'STRUCTURE', label: 'Cấu trúc & Bố cục' },
+                    { value: 'SYMBOLISM', label: 'Biểu tượng & Ẩn dụ' },
+                  ]}
+                  value={watch('featureType')}
+                  onChange={(val) =>
+                    setValue('featureType', val, { shouldValidate: true })
+                  }
+                  error={errors.featureType}
+                />
+              </Field>
+            </div>
+            <div className="md:col-span-8">
+              <Field
+                label="Tiêu đề nghệ thuật"
+                icon={Type}
+                error={errors.title}
+              >
+                <input
+                  {...register('title')}
+                  placeholder="Ví dụ: Bút pháp tả cảnh ngụ tình"
+                  className={inputClasses(errors.title)}
+                />
+              </Field>
+            </div>
           </div>
-          <div className="md:col-span-8">
-            <Field label="Tiêu đề nghệ thuật" icon={Type} error={errors.title}>
-              <input
-                {...register('title')}
-                placeholder="Ví dụ: Bút pháp tả cảnh ngụ tình"
-                className={inputClasses(errors.title)}
-              />
-            </Field>
-          </div>
+
+          <Field
+            label="Mô tả & Phân tích chi tiết"
+            icon={AlignLeft}
+            error={errors.description}
+          >
+            <textarea
+              {...register('description')}
+              rows={6}
+              placeholder="Phân tích cách tác giả sử dụng thủ pháp này..."
+              className={inputClasses(errors.description)}
+            />
+          </Field>
         </div>
-
-        <Field
-          label="Mô tả & Phân tích chi tiết"
-          icon={AlignLeft}
-          error={errors.description}
-        >
-          <textarea
-            {...register('description')}
-            rows={6}
-            placeholder="Phân tích cách tác giả sử dụng thủ pháp này..."
-            className={inputClasses(errors.description)}
-          />
-        </Field>
-
-        <div className="pt-6 flex justify-end gap-3 border-t border-outline-variant/20">
+        <div className="p-4 md:px-8 md:py-5 bg-[#fff9ef] border-t border-outline-variant/20 shrink-0 flex justify-end gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
           <button
             type="button"
             onClick={onClose}

@@ -1,5 +1,13 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Menu, ChevronLeft, ChevronRight, Sparkles, X } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import {
+  Menu,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  X,
+  ArrowLeft,
+} from 'lucide-react'
 import {
   useGetSectionNotes,
   useCreateNote,
@@ -139,6 +147,7 @@ const getParagraphs = (content, notes) => {
 
 export const ReadingPageContent = ({
   work,
+  slug,
   currentSection,
   prevSection,
   nextSection,
@@ -272,45 +281,57 @@ export const ReadingPageContent = ({
         <div className="flex items-center gap-4">
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="p-2.5 rounded-full hover:bg-white text-[#ab3429] transition-all shadow-sm border border-white bg-white/60 group"
+            className="p-3 rounded-full hover:bg-white text-[#ab3429] transition-all shadow-sm border border-white bg-white/60 group"
           >
             <Menu
-              size={22}
+              size={24}
               className="group-hover:scale-110 transition-transform"
             />
           </button>
           <div className="hidden sm:flex flex-col justify-center">
-            <div className="text-[10px] font-bold text-[#50443e]/50 uppercase tracking-widest mb-0.5">
+            <div className="text-xs font-bold text-[#50443e]/70 uppercase tracking-wider mb-0.5">
               {work?.title}
             </div>
-            <div className="flex items-center gap-3">
-              <h1 className="font-title text-[15px] font-bold text-[#412311] truncate max-w-[200px] md:max-w-[400px]">
+            <div className="flex items-center gap-3.5">
+              <h1 className="font-title text-lg md:text-xl font-bold text-[#412311] truncate max-w-[220px] md:max-w-[450px]">
                 {currentSection?.title || `Chương ${currentSection?.number}`}
               </h1>
 
               {/* Nút chuyển chương Inline */}
-              <div className="flex items-center gap-0.5 bg-[#412311]/5 rounded-full p-0.5 border border-[#412311]/10">
+              <div className="flex items-center gap-1 bg-[#412311]/5 rounded-full p-1 border border-[#412311]/10">
                 <button
                   onClick={() => prevSection && handleNavigate(prevSection.id)}
                   disabled={!prevSection}
-                  className="p-1 text-[#412311]/70 hover:text-[#412311] hover:bg-white rounded-full transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                  className="p-1.5 text-[#412311]/70 hover:text-[#412311] hover:bg-white rounded-full transition-all disabled:opacity-30 disabled:hover:bg-transparent"
                   title="Chương trước"
                 >
-                  <ChevronLeft size={14} />
+                  <ChevronLeft size={18} />
                 </button>
-                <div className="w-[1px] h-3 bg-[#412311]/10"></div>
+                <div className="w-[1px] h-4 bg-[#412311]/15"></div>
                 <button
                   onClick={() => nextSection && handleNavigate(nextSection.id)}
                   disabled={!nextSection}
-                  className="p-1 text-[#412311]/70 hover:text-[#412311] hover:bg-white rounded-full transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                  className="p-1.5 text-[#412311]/70 hover:text-[#412311] hover:bg-white rounded-full transition-all disabled:opacity-30 disabled:hover:bg-transparent"
                   title="Chương tiếp theo"
                 >
-                  <ChevronRight size={14} />
+                  <ChevronRight size={18} />
                 </button>
               </div>
             </div>
           </div>
         </div>
+
+        <Link
+          to={slug ? `/thu-vien/${slug}` : '/thu-vien'}
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#412311]/5 hover:bg-[#ab3429] text-[#412311] hover:text-white transition-all text-sm font-bold border border-[#412311]/10 hover:border-transparent shadow-sm group"
+          title="Thoát chế độ đọc"
+        >
+          <ArrowLeft
+            size={16}
+            className="group-hover:-translate-x-0.5 transition-transform"
+          />
+          <span>Thoát</span>
+        </Link>
       </header>
 
       {/* Nội dung Văn Bản */}

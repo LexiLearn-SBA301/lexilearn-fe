@@ -8,6 +8,8 @@ import {
   Loader2,
   Feather,
   BookOpen,
+  CheckCircle,
+  AlertCircle,
 } from 'lucide-react'
 import { useWorkDetail } from '../hooks/useLibrary'
 import { fetchWorkSectionDetail } from '../../../services/workDetail.service'
@@ -63,6 +65,15 @@ export const WorkDetailAdminPage = () => {
   const updateFeature = useUpdateArtisticFeature()
   const deleteFeature = useDeleteArtisticFeature()
 
+  // -- TOAST NOTIFICATION --
+  const [toast, setToast] = useState(null)
+  const showToast = (type, message) => {
+    setToast({ type, message })
+    setTimeout(() => {
+      setToast((prev) => (prev?.message === message ? null : prev))
+    }, 3500)
+  }
+
   // -- FORM STATES --
   const [editingItem, setEditingItem] = useState(null)
   const [formType, setFormType] = useState(null) // 'section' | 'character' | 'feature' | null
@@ -108,12 +119,15 @@ export const WorkDetailAdminPage = () => {
           sectionId: editingItem.id,
           data,
         })
+        showToast('success', 'Cập nhật chương thành công!')
       } else {
         await createSection.mutateAsync({ workId: work.id, data })
+        showToast('success', 'Thêm chương mới thành công!')
       }
       closeForm()
     } catch (e) {
       console.error(e)
+      showToast('error', 'Lưu chương thất bại! Vui lòng kiểm tra lại.')
     }
   }
 
@@ -125,12 +139,15 @@ export const WorkDetailAdminPage = () => {
           characterId: editingItem.id,
           data,
         })
+        showToast('success', 'Cập nhật nhân vật thành công!')
       } else {
         await createChar.mutateAsync({ workId: work.id, data })
+        showToast('success', 'Thêm nhân vật mới thành công!')
       }
       closeForm()
     } catch (e) {
       console.error(e)
+      showToast('error', 'Lưu nhân vật thất bại! Vui lòng kiểm tra lại.')
     }
   }
 
@@ -142,12 +159,18 @@ export const WorkDetailAdminPage = () => {
           featureId: editingItem.id,
           data,
         })
+        showToast('success', 'Cập nhật đặc sắc nghệ thuật thành công!')
       } else {
         await createFeature.mutateAsync({ workId: work.id, data })
+        showToast('success', 'Thêm đặc sắc nghệ thuật thành công!')
       }
       closeForm()
     } catch (e) {
       console.error(e)
+      showToast(
+        'error',
+        'Lưu đặc sắc nghệ thuật thất bại! Vui lòng kiểm tra lại.',
+      )
     }
   }
 
@@ -160,12 +183,21 @@ export const WorkDetailAdminPage = () => {
     const { type, item } = deleteData
 
     try {
-      if (type === 'section')
+      if (type === 'section') {
         await deleteSection.mutateAsync({ workId: work.id, sectionId: item.id })
-      if (type === 'character')
+        showToast('success', 'Xóa chương thành công!')
+      }
+      if (type === 'character') {
         await deleteChar.mutateAsync({ workId: work.id, characterId: item.id })
-      if (type === 'feature')
+        showToast('success', 'Xóa nhân vật thành công!')
+      }
+      if (type === 'feature') {
         await deleteFeature.mutateAsync({ workId: work.id, featureId: item.id })
+        showToast('success', 'Xóa đặc sắc nghệ thuật thành công!')
+      }
+    } catch (e) {
+      console.error(e)
+      showToast('error', 'Xóa thất bại! Vui lòng thử lại.')
     } finally {
       setDeleteData(null)
     }
@@ -345,6 +377,26 @@ export const WorkDetailAdminPage = () => {
           deleteFeature.isPending
         }
       />
+
+      {/* FLOATING TOAST NOTIFICATION */}
+      {toast && (
+        <div
+          className={`fixed bottom-6 right-6 z-[100] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl animate-in fade-in slide-in-from-bottom-5 duration-300 border ${
+            toast.type === 'success'
+              ? 'bg-[#004943] text-white border-[#79b8af]/30 shadow-[#004943]/30'
+              : 'bg-[#ab3429] text-white border-white/20 shadow-[#ab3429]/30'
+          }`}
+        >
+          {toast.type === 'success' ? (
+            <CheckCircle size={22} className="text-[#79b8af] shrink-0" />
+          ) : (
+            <AlertCircle size={22} className="text-white shrink-0" />
+          )}
+          <span className="font-bold text-sm tracking-wide">
+            {toast.message}
+          </span>
+        </div>
+      )}
     </div>
   )
 }
