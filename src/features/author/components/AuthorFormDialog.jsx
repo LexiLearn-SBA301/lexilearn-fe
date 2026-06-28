@@ -1,14 +1,19 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { authorSchema, defaultAuthorValues } from '../schemas/author.schema'
 import { useCreateAuthor, useUpdateAuthor } from '../hooks/useAuthor'
 import { X, Loader2, Save } from 'lucide-react'
+import { ImageUploader } from '../../../components/ui/ImageUploader'
+import { uploadImageDirect } from '../../../services/upload.service'
 
 export const AuthorFormDialog = ({ isOpen, onClose, authorData }) => {
   const isEditMode = !!authorData
   const createMutation = useCreateAuthor()
   const updateMutation = useUpdateAuthor()
+
+  const [selectedImage, setSelectedImage] = useState(null)
+  const [isUploading, setIsUploading] = useState(false)
 
   const {
     register,
@@ -37,16 +42,31 @@ export const AuthorFormDialog = ({ isOpen, onClose, authorData }) => {
       } else {
         reset(defaultAuthorValues)
       }
+      // eslint-disable-next-line
+      setSelectedImage(null)
     }
   }, [isOpen, isEditMode, authorData, reset])
 
   const onSubmit = async (data) => {
     try {
+      setIsUploading(true)
       const payload = {
         ...data,
         birthYear: data.birthYear ? Number(data.birthYear) : null,
         deathYear: data.deathYear ? Number(data.deathYear) : null,
       }
+
+      // 1. Upload ảnh trực tiếp nếu có chọn ảnh mới
+      if (selectedImage) {
+        const portraitRef = await uploadImageDirect(
+          selectedImage,
+          'AUTHOR_PORTRAIT',
+        )
+        payload.portrait = portraitRef
+      }
+
+      // Xóa trường portraitUrl khỏi payload gửi đi vì BE chỉ cần object portrait nếu cập nhật
+      delete payload.portraitUrl
 
       if (isEditMode) {
         await updateMutation.mutateAsync({ id: authorData.id, data: payload })
@@ -56,7 +76,9 @@ export const AuthorFormDialog = ({ isOpen, onClose, authorData }) => {
       onClose()
     } catch (error) {
       console.error('Lỗi khi lưu tác giả:', error)
-      alert('Có lỗi xảy ra, vui lòng thử lại!')
+      alert(error.message || 'Có lỗi xảy ra, vui lòng thử lại!')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -192,21 +214,14 @@ export const AuthorFormDialog = ({ isOpen, onClose, authorData }) => {
                 )}
               </div>
 
-              {/* Link ảnh */}
+              {/* Upload Ảnh chân dung */}
               <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-bold text-primary">
-                  Đường dẫn ảnh chân dung (URL)
-                </label>
-                <input
-                  {...register('portraitUrl')}
-                  className={`w-full bg-white border ${errors.portraitUrl ? 'border-[#ab3429]' : 'border-outline-variant/40'} text-primary rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-tertiary-container`}
-                  placeholder="https://..."
+                <ImageUploader
+                  label="Ảnh chân dung (Tối đa 5MB, JPG/PNG/WebP)"
+                  defaultImage={authorData?.portraitUrl}
+                  onChange={(file) => setSelectedImage(file)}
+                  maxSizeMB={5}
                 />
-                {errors.portraitUrl && (
-                  <p className="text-xs text-[#ab3429] font-medium">
-                    {errors.portraitUrl.message}
-                  </p>
-                )}
               </div>
 
               {/* Tiểu sử */}
@@ -236,7 +251,7 @@ export const AuthorFormDialog = ({ isOpen, onClose, authorData }) => {
             type="button"
             onClick={onClose}
             className="px-6 py-2.5 rounded-xl text-primary font-bold hover:bg-outline-variant/20 transition-colors border border-outline-variant/50"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUploading}
           >
             Hủy Bỏ
           </button>
@@ -245,19 +260,25 @@ export const AuthorFormDialog = ({ isOpen, onClose, authorData }) => {
             form="author-form"
             disabled={
               isSubmitting ||
+              isUploading ||
               createMutation.isPending ||
               updateMutation.isPending
             }
             className="px-6 py-2.5 bg-[#ab3429] text-white rounded-xl font-bold hover:bg-[#8a1c14] transition-colors flex items-center gap-2 shadow-md disabled:opacity-70"
           >
             {isSubmitting ||
+            isUploading ||
             createMutation.isPending ||
             updateMutation.isPending ? (
               <Loader2 size={18} className="animate-spin" />
             ) : (
               <Save size={18} />
             )}
-            {isEditMode ? 'Lưu Thay Đổi' : 'Thêm Tác Giả'}
+            {isUploading
+              ? 'Đang Upload...'
+              : isEditMode
+                ? 'Lưu Thay Đổi'
+                : 'Thêm Tác Giả'}
           </button>
         </div>
       </div>
