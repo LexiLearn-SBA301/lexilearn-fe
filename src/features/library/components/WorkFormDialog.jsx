@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import {
@@ -10,6 +10,8 @@ import { useCreateWork, useUpdateWork } from '../hooks/useLibrary'
 import { useAuthors } from '../../author/hooks/useAuthor'
 import { useTags } from '../../tag/hooks/useTag'
 import { X, Loader2, Save } from 'lucide-react'
+import { ImageUploader } from '../../../components/ui/ImageUploader'
+import { uploadImageDirect } from '../../../services/upload.service'
 
 export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
   const isEditMode = !!workData
@@ -18,6 +20,9 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
 
   const { data: authorsData } = useAuthors({ size: 1000 })
   const { data: tagsData } = useTags({ size: 1000 })
+
+  const [selectedImage, setSelectedImage] = useState(null)
+  const [isUploading, setIsUploading] = useState(false)
 
   const {
     register,
@@ -58,17 +63,28 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
       } else {
         reset(defaultWorkValues)
       }
+      // eslint-disable-next-line
+      setSelectedImage(null)
     }
   }, [isOpen, isEditMode, workData, reset])
 
   const onSubmit = async (data) => {
     try {
+      setIsUploading(true)
       const payload = {
         ...data,
         publishYear: data.publishYear ? Number(data.publishYear) : null,
         grade: data.grade ? Number(data.grade) : null,
         semester: data.semester ? Number(data.semester) : null,
       }
+
+      // Upload ảnh trực tiếp nếu có ảnh mới
+      if (selectedImage) {
+        const coverRef = await uploadImageDirect(selectedImage, 'WORK_COVER')
+        payload.cover = coverRef
+      }
+
+      delete payload.coverUrl // Không gửi string URL lên API nếu Backend chỉ cần JSON
 
       if (isEditMode) {
         await updateMutation.mutateAsync({ id: workData.id, data: payload })
@@ -78,7 +94,9 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
       onClose()
     } catch (error) {
       console.error('Lỗi khi lưu tác phẩm:', error)
-      alert('Có lỗi xảy ra!')
+      alert(error.message || 'Có lỗi xảy ra!')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -349,13 +367,13 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
                 />
               </div>
 
+              {/* Upload Ảnh bìa */}
               <div className="space-y-2 md:col-span-2">
-                <label className="text-sm font-bold text-primary">
-                  URL Ảnh bìa
-                </label>
-                <input
-                  {...register('coverUrl')}
-                  className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
+                <ImageUploader
+                  label="Ảnh bìa tác phẩm (Tối đa 5MB, JPG/PNG/WebP)"
+                  defaultImage={workData?.coverUrl}
+                  onChange={(file) => setSelectedImage(file)}
+                  maxSizeMB={5}
                 />
               </div>
 
@@ -382,7 +400,7 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
           <button
             type="button"
             onClick={onClose}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isUploading}
             className="px-6 py-2.5 rounded-xl text-primary font-bold border border-outline-variant/50 hover:bg-outline-variant/20"
           >
             Hủy Bỏ
@@ -392,19 +410,25 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
             form="work-form"
             disabled={
               isSubmitting ||
+              isUploading ||
               createMutation.isPending ||
               updateMutation.isPending
             }
             className="px-6 py-2.5 bg-[#ab3429] text-white rounded-xl font-bold hover:bg-[#8a1c14] flex items-center gap-2"
           >
             {isSubmitting ||
+            isUploading ||
             createMutation.isPending ||
             updateMutation.isPending ? (
               <Loader2 size={18} className="animate-spin" />
             ) : (
               <Save size={18} />
             )}
-            {isEditMode ? 'Lưu Thay Đổi' : 'Thêm Tác Phẩm'}
+            {isUploading
+              ? 'Đang Upload...'
+              : isEditMode
+                ? 'Lưu Thay Đổi'
+                : 'Thêm Tác Phẩm'}
           </button>
         </div>
       </div>
