@@ -52,26 +52,26 @@ export const HomePage = () => {
     <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center bg-[#fff9ef] relative overflow-hidden">
       <div className="absolute inset-0 opacity-[0.03] watermark-pattern pointer-events-none"></div>
 
-      <main className="max-w-5xl mx-auto px-6 w-full flex flex-col md:flex-row items-center gap-12 relative z-10 py-20">
-        <div className="flex-1 space-y-8">
-          <h1 className="font-title text-5xl md:text-6xl font-bold text-primary leading-tight">
+      <main className="max-w-[clamp(20rem,90vw,120rem)] mx-auto px-[clamp(1rem,4vw,5.5rem)] w-full flex flex-col md:flex-row items-center gap-[clamp(2rem,6vw,6.5rem)] relative z-10 py-[clamp(3rem,8vw,9rem)]">
+        <div className="flex-1 space-y-[clamp(1.25rem,3vw,3.25rem)]">
+          <h1 className="font-title text-[clamp(2rem,4vw+1rem,6rem)] font-bold text-primary leading-tight">
             Khám phá kho tàng văn học Việt Nam bằng một cách hoàn toàn mới
           </h1>
-          <p className="text-lg text-on-surface-variant leading-relaxed">
+          <p className="text-[clamp(1rem,0.75vw+0.75rem,1.875rem)] text-on-surface-variant leading-relaxed">
             Đắm chìm vào di sản văn chương dân tộc với sự đồng hành của AI
             Chatbot thông minh. Phân tích sâu sắc, gợi ý cá nhân hóa và trải
             nghiệm đọc tinh tế.
           </p>
-          <div className="flex gap-4">
+          <div className="flex gap-[clamp(0.75rem,2vw,2rem)]">
             <button
               onClick={() => navigate('/thu-vien')}
-              className="px-8 py-4 bg-[#ab3429] text-white rounded-xl font-bold hover:bg-[#8a1c14] transition-all flex items-center gap-2"
+              className="px-[clamp(1.25rem,2.5vw,3.25rem)] py-[clamp(0.75rem,1.5vw,1.625rem)] bg-[#ab3429] text-white rounded-xl font-bold hover:bg-[#8a1c14] transition-all flex items-center gap-2 text-[clamp(0.875rem,0.5vw+0.75rem,1.5rem)]"
             >
               <BookOpen size={20} /> Bắt đầu đọc
             </button>
             <button
               onClick={() => openChat()}
-              className="px-8 py-4 bg-transparent border-2 border-primary text-primary rounded-xl font-bold hover:bg-primary/5 transition-all flex items-center gap-2"
+              className="px-[clamp(1.25rem,2.5vw,3.25rem)] py-[clamp(0.75rem,1.5vw,1.625rem)] bg-transparent border-2 border-primary text-primary rounded-xl font-bold hover:bg-primary/5 transition-all flex items-center gap-2 text-[clamp(0.875rem,0.5vw+0.75rem,1.5rem)]"
             >
               <Sparkles size={20} /> Hỏi chatbot
             </button>
@@ -85,7 +85,7 @@ export const HomePage = () => {
         </div>
       </main>
 
-      <div className="w-full max-w-3xl px-6 pb-20 relative">
+      <div className="w-full max-w-[clamp(20rem,70vw,72rem)] px-[clamp(1rem,4vw,5.5rem)] pb-[clamp(3rem,8vw,9rem)] relative">
         <form onSubmit={handleSearchSubmit} className="relative group">
           <input
             type="text"
@@ -93,7 +93,7 @@ export const HomePage = () => {
             onChange={handleSearchChange}
             placeholder="Tìm kiếm tác phẩm..."
             // Chỉnh pr-14 cho cân đối
-            className="w-full bg-white border border-outline-variant/30 text-primary rounded-2xl py-5 pl-14 pr-14 shadow-lg focus:outline-none focus:ring-2 focus:ring-secondary/50 transition-all"
+            className="w-full bg-white border border-outline-variant/30 text-primary rounded-2xl py-[clamp(1rem,2vw,2rem)] pl-[clamp(2.75rem,4vw,4.75rem)] pr-[clamp(2.75rem,4vw,4.75rem)] text-[clamp(0.9375rem,0.5vw+0.75rem,1.5rem)] shadow-lg focus:outline-none focus:ring-2 focus:ring-secondary/50 transition-all"
           />
           <Search
             className="absolute left-5 top-1/2 -translate-y-1/2 text-outline-variant"
