@@ -84,11 +84,11 @@ export const useDeleteBookmark = () => {
 }
 
 // -- NOTES --
-export const useGetSectionNotes = (sectionId) => {
+export const useGetSectionNotes = (sectionId, enabled = true) => {
   return useQuery({
     queryKey: ['notes', sectionId],
     queryFn: () => fetchSectionNotes(sectionId),
-    enabled: !!sectionId,
+    enabled: !!sectionId && enabled,
   })
 }
 
