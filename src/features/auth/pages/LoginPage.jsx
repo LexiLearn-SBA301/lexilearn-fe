@@ -71,14 +71,18 @@ export const LoginPage = () => {
               onSubmit={handleSubmit(onSubmit)}
               noValidate
             >
-              {/* Thông báo lỗi từ server (BE) — chỉ hiển thị khi có lỗi */}
-              {serverErrorMessage && (
-                <div className="px-4 py-3 rounded-xl bg-[#ab3429]/10 border border-[#ab3429]/30">
-                  <p className="text-sm text-[#ab3429] font-medium">
-                    {serverErrorMessage}
-                  </p>
-                </div>
-              )}
+              {/* Thông báo lỗi từ server (BE) — luôn render (giữ chỗ cố định)
+                  và chỉ ẩn bằng `invisible` khi không có lỗi, để tránh làm
+                  co giãn/đổi vị trí card khi banner xuất hiện/biến mất */}
+              <div
+                className={`px-4 py-3 rounded-xl bg-[#ab3429]/10 border border-[#ab3429]/30 ${
+                  serverErrorMessage ? '' : 'invisible'
+                }`}
+              >
+                <p className="text-sm text-[#ab3429] font-medium">
+                  {serverErrorMessage || ' '}
+                </p>
+              </div>
 
               {/* Email/Username */}
               <div>
@@ -101,11 +105,15 @@ export const LoginPage = () => {
                     {...register('email')}
                   />
                 </div>
-                {errors.email && (
-                  <p className="mt-1.5 text-xs text-[#ab3429] font-medium">
-                    {errors.email.message}
-                  </p>
-                )}
+                {/* Luôn render slot lỗi với min-height cố định để không làm co giãn
+                    chiều cao form khi lỗi xuất hiện/biến mất (tránh layout shift) */}
+                <p
+                  className={`mt-1.5 min-h-[18px] text-xs font-medium ${
+                    errors.email ? 'text-[#ab3429]' : 'invisible'
+                  }`}
+                >
+                  {errors.email?.message || ' '}
+                </p>
               </div>
 
               {/* Password */}
@@ -144,11 +152,13 @@ export const LoginPage = () => {
                     {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                   </button>
                 </div>
-                {errors.password && (
-                  <p className="mt-1.5 text-xs text-[#ab3429] font-medium">
-                    {errors.password.message}
-                  </p>
-                )}
+                <p
+                  className={`mt-1.5 min-h-[18px] text-xs font-medium ${
+                    errors.password ? 'text-[#ab3429]' : 'invisible'
+                  }`}
+                >
+                  {errors.password?.message || ' '}
+                </p>
               </div>
 
               {/* Remember Me */}

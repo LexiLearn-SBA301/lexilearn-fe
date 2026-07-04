@@ -80,36 +80,34 @@ export const RegisterPage = () => {
         </div>
 
         {/* Right Side: Registration Form */}
-        <div className="w-full md:w-1/2 p-8 md:px-12 md:py-5 flex flex-col justify-center bg-bright-cream relative z-10">
-          {/* Brand Logo */}
+        <div className="w-full md:w-1/2 p-8 md:px-12 md:py-6 flex flex-col justify-center bg-bright-cream relative z-10">
+          {/* Tiêu đề — không lặp lại logo "Mộc Bản" vì header phía trên đã hiển thị */}
           <div className="mb-3 text-center md:text-left">
-            <h1 className="font-title text-2xl font-bold text-primary tracking-tight">
-              Mộc Bản
-            </h1>
-          </div>
-
-          <div className="mb-4">
-            <h2 className="font-title text-[28px] font-semibold text-primary mb-1">
+            <h2 className="font-title text-2xl font-semibold text-primary mb-1">
               Tạo tài khoản mới
             </h2>
-            <p className="font-body text-base text-on-surface-variant">
+            <p className="font-body text-sm text-on-surface-variant">
               Vui lòng điền thông tin bên dưới để đăng ký.
             </p>
           </div>
 
           <form
-            className="space-y-2.5"
+            className="space-y-2"
             onSubmit={handleSubmit(onSubmit)}
             noValidate
           >
-            {/* Thông báo lỗi từ server (BE) — chỉ hiển thị khi có lỗi */}
-            {serverErrorMessage && (
-              <div className="px-4 py-3 rounded-xl bg-[#ab3429]/10 border border-[#ab3429]/30">
-                <p className="text-sm text-[#ab3429] font-medium">
-                  {serverErrorMessage}
-                </p>
-              </div>
-            )}
+            {/* Thông báo lỗi từ server (BE) — luôn render (giữ chỗ cố định)
+                và chỉ ẩn bằng `invisible` khi không có lỗi, để tránh làm
+                co giãn/đổi vị trí card khi banner xuất hiện/biến mất */}
+            <div
+              className={`px-4 py-3 rounded-xl bg-[#ab3429]/10 border border-[#ab3429]/30 ${
+                serverErrorMessage ? '' : 'invisible'
+              }`}
+            >
+              <p className="text-sm text-[#ab3429] font-medium">
+                {serverErrorMessage || ' '}
+              </p>
+            </div>
 
             {/* Họ và tên */}
             <div>
@@ -131,11 +129,15 @@ export const RegisterPage = () => {
                   {...register('fullName')}
                 />
               </div>
-              {errors.fullName && (
-                <p className="mt-1 text-xs text-[#ab3429] font-medium">
-                  {errors.fullName.message}
-                </p>
-              )}
+              {/* Luôn render slot lỗi với min-height cố định để không làm co giãn
+                  chiều cao form khi lỗi xuất hiện/biến mất (tránh layout shift) */}
+              <p
+                className={`mt-1 min-h-[18px] text-xs font-medium ${
+                  errors.fullName ? 'text-[#ab3429]' : 'invisible'
+                }`}
+              >
+                {errors.fullName?.message || ' '}
+              </p>
             </div>
 
             {/* Email */}
@@ -158,11 +160,13 @@ export const RegisterPage = () => {
                   {...register('email')}
                 />
               </div>
-              {errors.email && (
-                <p className="mt-1 text-xs text-[#ab3429] font-medium">
-                  {errors.email.message}
-                </p>
-              )}
+              <p
+                className={`mt-1 min-h-[18px] text-xs font-medium ${
+                  errors.email ? 'text-[#ab3429]' : 'invisible'
+                }`}
+              >
+                {errors.email?.message || ' '}
+              </p>
             </div>
 
             {/* Mật khẩu */}
@@ -193,11 +197,13 @@ export const RegisterPage = () => {
                   {showPassword ? <Eye size={20} /> : <EyeOff size={20} />}
                 </button>
               </div>
-              {errors.password && (
-                <p className="mt-1 text-xs text-[#ab3429] font-medium">
-                  {errors.password.message}
-                </p>
-              )}
+              <p
+                className={`mt-1 min-h-[18px] text-xs font-medium ${
+                  errors.password ? 'text-[#ab3429]' : 'invisible'
+                }`}
+              >
+                {errors.password?.message || ' '}
+              </p>
             </div>
 
             {/* Xác nhận mật khẩu */}
@@ -220,16 +226,18 @@ export const RegisterPage = () => {
                   {...register('confirmPassword')}
                 />
               </div>
-              {errors.confirmPassword && (
-                <p className="mt-1 text-xs text-[#ab3429] font-medium">
-                  {errors.confirmPassword.message}
-                </p>
-              )}
+              <p
+                className={`mt-1 min-h-[18px] text-xs font-medium ${
+                  errors.confirmPassword ? 'text-[#ab3429]' : 'invisible'
+                }`}
+              >
+                {errors.confirmPassword?.message || ' '}
+              </p>
             </div>
 
             {/* Submit Button — disable khi mutation đang chờ response */}
             <button
-              className="w-full mt-4 py-2.5 px-4 bg-gradient-to-r from-secondary to-secondary-container text-white font-body text-[15px] font-semibold tracking-wide rounded-lg shadow-[0_4px_14px_rgba(171,52,41,0.25)] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
+              className="w-full mt-2 py-2.5 px-4 bg-gradient-to-r from-secondary to-secondary-container text-white font-body text-[15px] font-semibold tracking-wide rounded-lg shadow-[0_4px_14px_rgba(171,52,41,0.25)] hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed disabled:translate-y-0"
               type="submit"
               disabled={isPending}
             >
@@ -239,8 +247,8 @@ export const RegisterPage = () => {
           </form>
 
           {/* Login Link */}
-          <div className="mt-4 text-center border-t border-outline-variant/30 pt-4">
-            <p className="font-body text-base text-on-surface-variant">
+          <div className="mt-3 text-center border-t border-outline-variant/30 pt-3">
+            <p className="font-body text-sm text-on-surface-variant">
               Đã có tài khoản?
               <Link
                 className="font-body text-[15px] font-semibold tracking-wide text-secondary hover:text-on-secondary-container transition-colors ml-1 underline decoration-secondary/30 underline-offset-4"

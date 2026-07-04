@@ -31,19 +31,25 @@ export const useLogin = () => {
         refreshToken: tokenResponse.refreshToken,
       })
 
-      try {
-        // Lấy thông tin người dùng hiện tại từ /v1/auth/me (token đã được gắn tự động)
-        const user = await getMeApi()
-        // Lưu thông tin người dùng vào store
-        setUser(user)
+      // Lấy thông tin người dùng hiện tại từ /v1/auth/me (token đã được gắn tự động)
+      // Lưu ý: KHÔNG bọc try/catch nuốt lỗi ở đây nữa.
+      // Trước đây nếu getMeApi() thất bại (vd 401 do bug BE chỉ xảy ra với role USER),
+      // code sẽ console.error rồi tự navigate('/') — điều này gây ra 2 vấn đề:
+      //  1. Lỗi thật bị nuốt mất, user không được thông báo gì (banner lỗi không hiện)
+      //  2. navigate('/') (điều hướng phía client) chạy đua với response interceptor
+      //     trong lib/api.js — nếu refresh token cũng thất bại, interceptor sẽ gọi
+      //     window.location.href = '/dang-nhap' (reload cứng cả trang). Hai điều hướng
+      //     này đụng nhau khiến trang nháy lỗi rồi bị load lại về /dang-nhap sạch trơn,
+      //     trông như "lỗi hiện rồi biến mất ngay".
+      // Giờ để lỗi ném ra ngoài — mutation sẽ chuyển sang isError=true với đúng lỗi
+      // gốc, LoginPage hiển thị message thật (hoặc fallback) và KHÔNG tự ý điều hướng,
+      // tránh đụng độ với interceptor.
+      const user = await getMeApi()
+      // Lưu thông tin người dùng vào store
+      setUser(user)
 
-        // Điều hướng theo role
-        navigate(resolveHomeRoute(user.roles))
-      } catch (error) {
-        // Nếu /me thất bại, user vẫn đã đăng nhập (token đã lưu) — về trang chủ như bình thường
-        console.error('[useLogin] Không lấy được thông tin user từ /me:', error)
-        navigate('/')
-      }
+      // Điều hướng theo role
+      navigate(resolveHomeRoute(user.roles))
     },
   })
 }
