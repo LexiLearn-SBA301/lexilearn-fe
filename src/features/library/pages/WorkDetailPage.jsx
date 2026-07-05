@@ -93,7 +93,18 @@ export const WorkDetailPage = () => {
               </p>
             )}
             <h2 className="font-title text-2xl text-on-surface-variant mb-6">
-              {work.authorName}
+              {work.authorSlug ? (
+                <Link
+                  to={`/tac-gia/${work.authorSlug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary hover:underline underline-offset-4 transition-colors cursor-pointer"
+                >
+                  {work.authorName}
+                </Link>
+              ) : (
+                work.authorName
+              )}
             </h2>
 
             <p className="text-on-surface-variant leading-relaxed text-lg mb-8 font-medium">
