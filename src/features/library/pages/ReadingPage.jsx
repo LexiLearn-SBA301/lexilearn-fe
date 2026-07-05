@@ -54,6 +54,24 @@ export const ReadingPage = () => {
   const [targetScrollRatio, setTargetScrollRatio] = useState(null)
   const [isCompleted, setIsCompleted] = useState(false)
 
+  // -- FOCUS MODE --
+  const [isFocusMode, setIsFocusMode] = useState(false)
+
+  // Toggle Fullscreen when isFocusMode changes
+  useEffect(() => {
+    if (isFocusMode) {
+      document.documentElement.requestFullscreen?.().catch((err) => {
+        console.warn('Cannot enter fullscreen', err)
+      })
+    } else {
+      if (document.fullscreenElement) {
+        document.exitFullscreen?.().catch((err) => {
+          console.warn('Cannot exit fullscreen', err)
+        })
+      }
+    }
+  }, [isFocusMode])
+
   // --- RESTORE BOOKMARK LOGIC ---
   useEffect(() => {
     if (!work || !bookmarks || hasPromptedRestore || !user) return
@@ -304,10 +322,16 @@ export const ReadingPage = () => {
     <div
       ref={scrollRef}
       onScroll={handleScroll}
-      className="fixed inset-0 z-50 overflow-y-auto custom-scrollbar bg-[#FAF3E7] text-[#2b211c] font-body flex transition-colors duration-500"
+      className={`fixed inset-0 z-50 overflow-y-auto custom-scrollbar font-body flex transition-colors duration-500 ${
+        isFocusMode
+          ? 'bg-[#121212] text-[#e8e6e3]'
+          : 'bg-[#FAF3E7] text-[#2b211c]'
+      }`}
     >
       {/* Lớp Texture Nền */}
-      <div className="fixed inset-0 pointer-events-none z-0 opacity-30 mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')]"></div>
+      {!isFocusMode && (
+        <div className="fixed inset-0 pointer-events-none z-0 opacity-30 mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')]"></div>
+      )}
 
       <ReadingPageSidebar
         work={work}
@@ -349,6 +373,9 @@ export const ReadingPage = () => {
         isCompleted={isCompleted}
         setIsCompleted={setIsCompleted}
         upsertBookmark={upsertBookmark}
+        isFocusMode={isFocusMode}
+        setIsFocusMode={setIsFocusMode}
+        totalSections={sections?.length || 1}
       />
 
       {/* Nút nổi + popup chatbot do <ChatWidget /> ở App quản lý chung cho mọi trang */}
