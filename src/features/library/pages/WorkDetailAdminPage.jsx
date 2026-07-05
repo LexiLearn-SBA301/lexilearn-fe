@@ -14,6 +14,12 @@ import {
 import { useWorkDetail } from '../hooks/useLibrary'
 import { fetchWorkSectionDetail } from '../../../services/workDetail.service'
 import {
+  useGetAdminCommentaries,
+  useCreateCommentary,
+  useUpdateCommentary,
+  useDeleteCommentary,
+} from '../hooks/useCommentary'
+import {
   useGetSections,
   useGetCharacters,
   useGetArtisticFeatures,
@@ -32,10 +38,13 @@ import {
   CharacterFormDialog,
   ArtisticFeatureFormDialog,
   ConfirmDeleteDialog,
+  CommentaryFormDialog,
 } from '../components/WorkDetailForms'
 import { AdminWorkDetailSections } from '../components/AdminWorkDetailSections'
 import { AdminWorkDetailCharacters } from '../components/AdminWorkDetailCharacters'
 import { AdminWorkDetailFeatures } from '../components/AdminWorkDetailFeatures'
+import { AdminWorkDetailCommentaries } from '../components/AdminWorkDetailCommentaries'
+import { MessageSquare } from 'lucide-react'
 
 export const WorkDetailAdminPage = () => {
   const { slug } = useParams()
@@ -52,6 +61,10 @@ export const WorkDetailAdminPage = () => {
   const { data: features, isLoading: isFeaturesLoading } =
     useGetArtisticFeatures(work?.id)
 
+  const { data: commentariesData, isLoading: isCommentariesLoading } =
+    useGetAdminCommentaries(work?.id, { page: 0, size: 50 })
+  const commentaries = commentariesData?.content || []
+
   // -- MUTATIONS --
   const createSection = useCreateWorkSection()
   const updateSection = useUpdateWorkSection()
@@ -64,6 +77,10 @@ export const WorkDetailAdminPage = () => {
   const createFeature = useCreateArtisticFeature()
   const updateFeature = useUpdateArtisticFeature()
   const deleteFeature = useDeleteArtisticFeature()
+
+  const createCommentary = useCreateCommentary()
+  const updateCommentary = useUpdateCommentary()
+  const deleteCommentary = useDeleteCommentary()
 
   // -- TOAST NOTIFICATION --
   const [toast, setToast] = useState(null)
@@ -174,6 +191,26 @@ export const WorkDetailAdminPage = () => {
     }
   }
 
+  const onCommentarySubmit = async (data) => {
+    try {
+      if (editingItem) {
+        await updateCommentary.mutateAsync({
+          workId: work.id,
+          commentaryId: editingItem.id,
+          data,
+        })
+        showToast('success', 'Cập nhật bình phẩm thành công!')
+      } else {
+        await createCommentary.mutateAsync({ workId: work.id, data })
+        showToast('success', 'Thêm bình phẩm mới thành công!')
+      }
+      closeForm()
+    } catch (e) {
+      console.error(e)
+      showToast('error', 'Lưu bình phẩm thất bại! Vui lòng kiểm tra lại.')
+    }
+  }
+
   const handleDeleteClick = (type, item) => {
     setDeleteData({ type, item })
   }
@@ -194,6 +231,13 @@ export const WorkDetailAdminPage = () => {
       if (type === 'feature') {
         await deleteFeature.mutateAsync({ workId: work.id, featureId: item.id })
         showToast('success', 'Xóa đặc sắc nghệ thuật thành công!')
+      }
+      if (type === 'commentary') {
+        await deleteCommentary.mutateAsync({
+          workId: work.id,
+          commentaryId: item.id,
+        })
+        showToast('success', 'Xóa bình phẩm thành công!')
       }
     } catch (e) {
       console.error(e)
@@ -233,6 +277,12 @@ export const WorkDetailAdminPage = () => {
       label: 'Nghệ thuật đặc sắc',
       icon: Sparkles,
       count: features?.length || 0,
+    },
+    {
+      id: 'commentaries',
+      label: 'Bình phẩm',
+      icon: MessageSquare,
+      count: commentaries?.length || 0,
     },
   ]
 
@@ -334,6 +384,16 @@ export const WorkDetailAdminPage = () => {
               handleDeleteClick={handleDeleteClick}
             />
           )}
+
+          {/* RENDERING COMMENTARIES */}
+          {activeTab === 'commentaries' && (
+            <AdminWorkDetailCommentaries
+              commentaries={commentaries}
+              isLoading={isCommentariesLoading}
+              openForm={openForm}
+              handleDeleteClick={handleDeleteClick}
+            />
+          )}
         </div>
       </div>
 
@@ -361,6 +421,14 @@ export const WorkDetailAdminPage = () => {
         isPending={createFeature.isPending || updateFeature.isPending}
       />
 
+      <CommentaryFormDialog
+        isOpen={formType === 'commentary'}
+        onClose={closeForm}
+        data={editingItem}
+        onSubmit={onCommentarySubmit}
+        isPending={createCommentary.isPending || updateCommentary.isPending}
+      />
+
       {/* DELETE CONFIRMATION */}
       <ConfirmDeleteDialog
         isOpen={!!deleteData}
@@ -374,7 +442,8 @@ export const WorkDetailAdminPage = () => {
         isPending={
           deleteSection.isPending ||
           deleteChar.isPending ||
-          deleteFeature.isPending
+          deleteFeature.isPending ||
+          deleteCommentary.isPending
         }
       />
 

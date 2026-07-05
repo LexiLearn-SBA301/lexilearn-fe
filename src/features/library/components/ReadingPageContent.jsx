@@ -14,6 +14,8 @@ import {
   useDeleteNote,
 } from '../hooks/useReading'
 import { useAuthStore } from '../../auth/store/auth.store'
+import { CommentarySection } from './CommentarySection'
+import { ReviewSection } from './ReviewSection'
 
 let sessionGuestNotes = []
 
@@ -164,6 +166,9 @@ export const ReadingPageContent = ({
   isCompleted,
   setIsCompleted,
   upsertBookmark,
+  isFocusMode,
+  setIsFocusMode,
+  totalSections,
 }) => {
   const [selectionRect, setSelectionRect] = useState(null)
   const [selectedText, setSelectedText] = useState('')
@@ -348,17 +353,40 @@ export const ReadingPageContent = ({
           </div>
         </div>
 
-        <Link
-          to={slug ? `/thu-vien/${slug}` : '/thu-vien'}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#412311]/5 hover:bg-[#ab3429] text-[#412311] hover:text-white transition-all text-sm font-bold border border-[#412311]/10 hover:border-transparent shadow-sm group"
-          title="Thoát chế độ đọc"
-        >
-          <ArrowLeft
-            size={16}
-            className="group-hover:-translate-x-0.5 transition-transform"
-          />
-          <span>Thoát</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          {/* Nút Tập trung (Focus Mode) */}
+          <button
+            onClick={() => setIsFocusMode(!isFocusMode)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-bold border shadow-sm group ${
+              isFocusMode
+                ? 'bg-[#ab3429] text-white border-transparent'
+                : 'bg-[#412311]/5 hover:bg-[#ab3429] text-[#412311] hover:text-white border-[#412311]/10 hover:border-transparent'
+            }`}
+            title="Chế độ đọc tập trung"
+          >
+            <Sparkles
+              size={16}
+              className={isFocusMode ? 'animate-pulse' : ''}
+            />
+            <span className="hidden sm:inline">Tập trung</span>
+          </button>
+
+          <Link
+            to={slug ? `/thu-vien/${slug}` : '/thu-vien'}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full transition-all text-sm font-bold border shadow-sm group ${
+              isFocusMode
+                ? 'bg-white/10 text-white border-white/20 hover:bg-white/20'
+                : 'bg-[#412311]/5 hover:bg-gray-800 text-[#412311] hover:text-white border-[#412311]/10 hover:border-transparent'
+            }`}
+            title="Thoát chế độ đọc"
+          >
+            <ArrowLeft
+              size={16}
+              className="group-hover:-translate-x-0.5 transition-transform"
+            />
+            <span className="hidden sm:inline">Thoát</span>
+          </Link>
+        </div>
       </header>
 
       {/* Nội dung Văn Bản */}
@@ -452,19 +480,46 @@ export const ReadingPageContent = ({
           </div>
         )}
 
+        {/* Ảnh bìa tác phẩm */}
+        {work?.coverUrl && (
+          <div className="flex justify-center mb-10">
+            <img
+              src={work.coverUrl}
+              alt={work.title}
+              className="w-32 md:w-48 h-auto object-cover rounded-xl shadow-lg border border-black/10"
+            />
+          </div>
+        )}
+
         {/* Tiêu đề */}
         <div className="text-center mb-16 relative">
-          <div className="inline-block px-4 py-1.5 bg-[#412311]/5 border border-[#412311]/10 rounded-full text-[#ab3429] text-xs font-bold tracking-widest uppercase mb-6 shadow-sm">
+          <div
+            className={`inline-block px-4 py-1.5 border rounded-full text-xs font-bold tracking-widest uppercase mb-6 shadow-sm ${
+              isFocusMode
+                ? 'bg-white/5 border-white/10 text-[#ff7261]'
+                : 'bg-[#412311]/5 border-[#412311]/10 text-[#ab3429]'
+            }`}
+          >
             Trích đoạn Tác phẩm
           </div>
-          <h2 className="font-title text-4xl md:text-[52px] font-extrabold text-[#412311] leading-tight relative z-10">
+          <h2
+            className={`font-title text-4xl md:text-[52px] font-extrabold leading-tight relative z-10 ${
+              isFocusMode ? 'text-[#e8e6e3]' : 'text-[#412311]'
+            }`}
+          >
             {currentSection?.title || `Chương ${currentSection?.number}`}
           </h2>
 
           <div className="mt-10 mb-2 flex items-center justify-center gap-4 opacity-80">
-            <div className="w-16 md:w-32 h-[1px] bg-gradient-to-r from-transparent to-[#ab3429]/60"></div>
-            <div className="w-1.5 h-1.5 rotate-45 bg-[#ab3429]"></div>
-            <div className="w-16 md:w-32 h-[1px] bg-gradient-to-l from-transparent to-[#ab3429]/60"></div>
+            <div
+              className={`w-16 md:w-32 h-[1px] bg-gradient-to-r from-transparent ${isFocusMode ? 'to-[#ff7261]/60' : 'to-[#ab3429]/60'}`}
+            ></div>
+            <div
+              className={`w-1.5 h-1.5 rotate-45 ${isFocusMode ? 'bg-[#ff7261]' : 'bg-[#ab3429]'}`}
+            ></div>
+            <div
+              className={`w-16 md:w-32 h-[1px] bg-gradient-to-l from-transparent ${isFocusMode ? 'to-[#ff7261]/60' : 'to-[#ab3429]/60'}`}
+            ></div>
           </div>
         </div>
 
@@ -472,7 +527,11 @@ export const ReadingPageContent = ({
         <div
           className={`w-full ${
             currentSection?.contentType !== 'POETRY'
-              ? 'prose prose-lg md:prose-xl text-lg md:text-xl max-w-none text-[#231a0c] font-quote leading-[2.2] tracking-wide text-justify hyphens-auto first-letter:text-[72px] first-letter:font-title first-letter:font-black first-letter:text-[#ab3429] first-letter:mr-2 first-letter:float-left first-letter:mt-1 first-letter:leading-[0.85] first-letter:[text-shadow:2px_2px_4px_rgba(171,52,41,0.25)]'
+              ? `prose prose-lg md:prose-xl text-lg md:text-xl max-w-none font-quote leading-[2.2] tracking-wide text-justify hyphens-auto first-letter:text-[72px] first-letter:font-title first-letter:font-black first-letter:mr-2 first-letter:float-left first-letter:mt-1 first-letter:leading-[0.85] ${
+                  isFocusMode
+                    ? 'text-[#d4d4d4] first-letter:text-[#ff7261] first-letter:[text-shadow:2px_2px_4px_rgba(255,114,97,0.25)]'
+                    : 'text-[#231a0c] first-letter:text-[#ab3429] first-letter:[text-shadow:2px_2px_4px_rgba(171,52,41,0.25)]'
+                }`
               : ''
           }`}
         >
@@ -521,9 +580,19 @@ export const ReadingPageContent = ({
             if (isPoetry) {
               return (
                 <div key={pIdx} className="flex justify-center my-8 w-full">
-                  <div className="font-quote text-lg md:text-xl text-[#501b17] leading-[1.8] tracking-wide whitespace-pre-wrap italic opacity-95 text-left min-w-[200px] border-l-2 border-[#ab3429]/30 pl-6 py-2 relative">
-                    <div className="absolute -left-[5px] top-0 w-2 h-2 rounded-full bg-[#ab3429]/20" />
-                    <div className="absolute -left-[5px] bottom-0 w-2 h-2 rounded-full bg-[#ab3429]/20" />
+                  <div
+                    className={`font-quote text-lg md:text-xl leading-[1.8] tracking-wide whitespace-pre-wrap italic opacity-95 text-left min-w-[200px] border-l-2 pl-6 py-2 relative ${
+                      isFocusMode
+                        ? 'text-[#e0b8b5] border-[#ff7261]/30'
+                        : 'text-[#501b17] border-[#ab3429]/30'
+                    }`}
+                  >
+                    <div
+                      className={`absolute -left-[5px] top-0 w-2 h-2 rounded-full ${isFocusMode ? 'bg-[#ff7261]/40' : 'bg-[#ab3429]/20'}`}
+                    />
+                    <div
+                      className={`absolute -left-[5px] bottom-0 w-2 h-2 rounded-full ${isFocusMode ? 'bg-[#ff7261]/40' : 'bg-[#ab3429]/20'}`}
+                    />
                     {renderSegments}
                   </div>
                 </div>
@@ -538,76 +607,100 @@ export const ReadingPageContent = ({
           })}
         </div>
 
-        {/* Nút Điều hướng Cuối bài */}
-        <div className="mt-28 pt-10 border-t border-[#83746d]/20 flex flex-col sm:flex-row items-stretch justify-between gap-6">
-          {prevSection ? (
-            <button
-              onClick={() => handleNavigate(prevSection.id)}
-              className="flex-1 flex flex-col items-start p-6 rounded-3xl hover:bg-white/60 transition-all duration-300 group border border-[#83746d]/10 bg-white/40 hover:shadow-lg hover:-translate-y-1"
-            >
-              <span className="text-[11px] font-bold uppercase tracking-widest text-[#50443e]/50 mb-2 flex items-center gap-1">
-                <ChevronLeft
-                  size={14}
-                  className="group-hover:-translate-x-1 transition-transform"
-                />{' '}
-                Chương trước
-              </span>
-              <span className="font-title text-xl font-bold text-[#412311] text-left line-clamp-2 leading-tight">
-                {prevSection.title || `Chương ${prevSection.number}`}
-              </span>
-            </button>
-          ) : (
-            <div className="flex-1" />
-          )}
-
-          {nextSection ? (
-            <button
-              onClick={() => handleNavigate(nextSection.id)}
-              className="flex-1 flex flex-col items-end p-6 rounded-3xl bg-gradient-to-br from-[#ab3429] to-[#8a1c14] text-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group border border-[#ab3429]/20"
-            >
-              <span className="text-[11px] font-bold uppercase tracking-widest text-white/60 mb-2 flex items-center gap-1">
-                Chương tiếp theo{' '}
-                <ChevronRight
-                  size={14}
-                  className="group-hover:translate-x-1 transition-transform"
-                />
-              </span>
-              <span className="font-title text-xl font-bold text-right line-clamp-2 leading-tight">
-                {nextSection.title || `Chương ${nextSection.number}`}
-              </span>
-            </button>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-6 rounded-3xl bg-white/20 border border-[#83746d]/10 shadow-sm gap-4">
-              <span className="text-[#50443e]/40 font-bold italic">
-                Đã đọc hết tác phẩm
-              </span>
-              {!isCompleted && (
-                <button
-                  onClick={() => {
-                    setIsCompleted(true)
-                    upsertBookmark({
-                      workId: work.id,
-                      data: {
-                        currentSectionId: currentSection.id,
-                        position: currentSection.content?.length || 0,
-                        progressPercent: 100,
-                        isCompleted: true,
-                      },
-                    })
-                  }}
-                  className="px-6 py-2 bg-green-600 text-white rounded-full font-bold shadow hover:bg-green-700 transition"
+        {/* Nút Điều hướng Cuối bài (Ẩn nếu là Thơ 1 trang) */}
+        {!(totalSections === 1 && currentSection?.contentType === 'POETRY') && (
+          <div
+            className={`mt-28 pt-10 border-t flex flex-col sm:flex-row items-stretch justify-between gap-6 ${isFocusMode ? 'border-white/10' : 'border-[#83746d]/20'}`}
+          >
+            {prevSection ? (
+              <button
+                onClick={() => handleNavigate(prevSection.id)}
+                className={`flex-1 flex flex-col items-start p-6 rounded-3xl transition-all duration-300 group border hover:shadow-lg hover:-translate-y-1 ${
+                  isFocusMode
+                    ? 'bg-white/5 border-white/10 hover:bg-white/10'
+                    : 'bg-white/40 border-[#83746d]/10 hover:bg-white/60'
+                }`}
+              >
+                <span
+                  className={`text-[11px] font-bold uppercase tracking-widest mb-2 flex items-center gap-1 ${isFocusMode ? 'text-white/40' : 'text-[#50443e]/50'}`}
                 >
-                  Đánh dấu hoàn thành
-                </button>
-              )}
-              {isCompleted && (
-                <span className="text-green-600 font-bold px-6 py-2 bg-green-50 rounded-full">
-                  ✓ Đã hoàn thành
+                  <ChevronLeft
+                    size={14}
+                    className="group-hover:-translate-x-1 transition-transform"
+                  />{' '}
+                  Chương trước
                 </span>
-              )}
-            </div>
-          )}
-        </div>
+                <span
+                  className={`font-title text-xl font-bold text-left line-clamp-2 leading-tight ${isFocusMode ? 'text-[#e8e6e3]' : 'text-[#412311]'}`}
+                >
+                  {prevSection.title || `Chương ${prevSection.number}`}
+                </span>
+              </button>
+            ) : (
+              <div className="flex-1" />
+            )}
+
+            {nextSection ? (
+              <button
+                onClick={() => handleNavigate(nextSection.id)}
+                className="flex-1 flex flex-col items-end p-6 rounded-3xl bg-gradient-to-br from-[#ab3429] to-[#8a1c14] text-white hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group border border-[#ab3429]/20"
+              >
+                <span className="text-[11px] font-bold uppercase tracking-widest text-white/60 mb-2 flex items-center gap-1">
+                  Chương tiếp theo{' '}
+                  <ChevronRight
+                    size={14}
+                    className="group-hover:translate-x-1 transition-transform"
+                  />
+                </span>
+                <span className="font-title text-xl font-bold text-right line-clamp-2 leading-tight">
+                  {nextSection.title || `Chương ${nextSection.number}`}
+                </span>
+              </button>
+            ) : (
+              <div
+                className={`flex-1 flex flex-col items-center justify-center p-6 rounded-3xl border shadow-sm gap-4 ${isFocusMode ? 'bg-white/5 border-white/10' : 'bg-white/20 border-[#83746d]/10'}`}
+              >
+                <span
+                  className={`font-bold italic ${isFocusMode ? 'text-white/40' : 'text-[#50443e]/40'}`}
+                >
+                  Đã đọc hết tác phẩm
+                </span>
+                {!isCompleted && (
+                  <button
+                    onClick={() => {
+                      setIsCompleted(true)
+                      upsertBookmark({
+                        workId: work.id,
+                        data: {
+                          currentSectionId: currentSection.id,
+                          position: currentSection.content?.length || 0,
+                          progressPercent: 100,
+                          isCompleted: true,
+                        },
+                      })
+                    }}
+                    className="px-6 py-2 bg-green-600 text-white rounded-full font-bold shadow hover:bg-green-500 transition"
+                  >
+                    Đánh dấu hoàn thành
+                  </button>
+                )}
+                {isCompleted && (
+                  <span
+                    className={`font-bold px-6 py-2 rounded-full ${isFocusMode ? 'text-green-400 bg-green-900/30' : 'text-green-600 bg-green-50'}`}
+                  >
+                    ✓ Đã hoàn thành
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Khu vực Bình phẩm */}
+        <CommentarySection workId={work?.id} isFocusMode={isFocusMode} />
+
+        {/* Khu vực Đánh giá của độc giả */}
+        <ReviewSection workId={work?.id} isFocusMode={isFocusMode} />
       </article>
     </main>
   )

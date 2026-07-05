@@ -718,3 +718,248 @@ export const ConfirmDeleteDialog = ({
     </div>
   )
 }
+
+// ==========================================
+// 5. COMMENTARY FORM DIALOG
+// ==========================================
+import { z } from 'zod'
+import { MessageSquare } from 'lucide-react'
+
+export const CommentaryFormDialog = ({
+  isOpen,
+  onClose,
+  data,
+  onSubmit,
+  isPending,
+}) => {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(
+      z.object({
+        title: z.string().optional(),
+        content: z.string().min(1, 'Vui lòng nhập nội dung bình phẩm'),
+        commentatorName: z.string().min(1, 'Vui lòng nhập tên người bình phẩm'),
+        commentatorType: z.enum([
+          'CRITIC',
+          'SCHOLAR',
+          'WRITER',
+          'TEACHER',
+          'EDITORIAL',
+          'READER',
+        ]),
+        sourceTitle: z.string().optional(),
+        sourceUrl: z
+          .string()
+          .url('URL không hợp lệ')
+          .optional()
+          .or(z.literal('')),
+        publishedYear: z.coerce
+          .number()
+          .min(1, 'Năm không hợp lệ')
+          .optional()
+          .or(z.literal('')),
+        isFeatured: z.boolean(),
+        isPublished: z.boolean(),
+      }),
+    ),
+    defaultValues: {
+      title: '',
+      content: '',
+      commentatorName: '',
+      commentatorType: 'CRITIC',
+      sourceTitle: '',
+      sourceUrl: '',
+      publishedYear: '',
+      isFeatured: false,
+      isPublished: true,
+    },
+  })
+
+  useEffect(() => {
+    if (isOpen) {
+      if (data) {
+        reset({
+          title: data.title || '',
+          content: data.content || '',
+          commentatorName: data.commentatorName || '',
+          commentatorType: data.commentatorType || 'CRITIC',
+          sourceTitle: data.sourceTitle || '',
+          sourceUrl: data.sourceUrl || '',
+          publishedYear: data.publishedYear || '',
+          isFeatured: data.isFeatured || false,
+          isPublished: data.isPublished !== undefined ? data.isPublished : true,
+        })
+      } else {
+        reset({
+          title: '',
+          content: '',
+          commentatorName: '',
+          commentatorType: 'CRITIC',
+          sourceTitle: '',
+          sourceUrl: '',
+          publishedYear: '',
+          isFeatured: false,
+          isPublished: true,
+        })
+      }
+    }
+  }, [isOpen, data, reset])
+
+  return (
+    <DialogWrapper
+      isOpen={isOpen}
+      onClose={onClose}
+      title={data ? 'Sửa Bình phẩm' : 'Thêm Bình phẩm'}
+      subtitle="Quản lý ý kiến, nhận định về tác phẩm"
+      icon={MessageSquare}
+    >
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="flex flex-col flex-1 overflow-hidden"
+      >
+        <div className="p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <Field
+              label="Tên người bình phẩm *"
+              icon={Type}
+              error={errors.commentatorName}
+            >
+              <input
+                {...register('commentatorName')}
+                placeholder="Ví dụ: Hoài Thanh, Xuân Diệu..."
+                className={inputClasses(errors.commentatorName)}
+              />
+            </Field>
+            <Field
+              label="Phân loại / Chức danh *"
+              icon={Layers}
+              error={errors.commentatorType}
+            >
+              <CustomSelect
+                options={[
+                  { value: 'CRITIC', label: 'Nhà phê bình' },
+                  { value: 'SCHOLAR', label: 'Học giả' },
+                  { value: 'WRITER', label: 'Nhà văn' },
+                  { value: 'TEACHER', label: 'Giáo viên' },
+                  { value: 'EDITORIAL', label: 'Ban biên tập' },
+                  { value: 'READER', label: 'Độc giả' },
+                ]}
+                value={watch('commentatorType')}
+                onChange={(val) =>
+                  setValue('commentatorType', val, { shouldValidate: true })
+                }
+                error={errors.commentatorType}
+              />
+            </Field>
+          </div>
+
+          <Field label="Tiêu đề (Tùy chọn)" icon={Type} error={errors.title}>
+            <input
+              {...register('title')}
+              placeholder="Nhập tiêu đề trích dẫn (nếu có)"
+              className={inputClasses(errors.title)}
+            />
+          </Field>
+
+          <Field
+            label="Nội dung bình phẩm *"
+            icon={AlignLeft}
+            error={errors.content}
+          >
+            <textarea
+              {...register('content')}
+              rows={5}
+              placeholder="Nhập nội dung chi tiết..."
+              className={inputClasses(errors.content)}
+            />
+          </Field>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <Field
+              label="Nguồn / Tác phẩm gốc"
+              icon={BookOpen}
+              error={errors.sourceTitle}
+            >
+              <input
+                {...register('sourceTitle')}
+                placeholder="Ví dụ: Thi nhân Việt Nam"
+                className={inputClasses(errors.sourceTitle)}
+              />
+            </Field>
+            <Field
+              label="Năm xuất bản"
+              icon={Hash}
+              error={errors.publishedYear}
+            >
+              <input
+                type="number"
+                {...register('publishedYear')}
+                placeholder="Ví dụ: 1942"
+                className={inputClasses(errors.publishedYear)}
+              />
+            </Field>
+          </div>
+
+          <Field label="Link gốc (URL)" icon={Type} error={errors.sourceUrl}>
+            <input
+              {...register('sourceUrl')}
+              placeholder="https://..."
+              className={inputClasses(errors.sourceUrl)}
+            />
+          </Field>
+
+          <div className="flex gap-8 border-t border-outline-variant/20 pt-6">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                {...register('isFeatured')}
+                className="w-5 h-5 rounded text-primary focus:ring-primary/20 bg-surface-container border-outline-variant/50 transition-all cursor-pointer"
+              />
+              <span className="font-bold text-on-surface group-hover:text-primary transition-colors">
+                Đánh dấu nổi bật
+              </span>
+            </label>
+
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                {...register('isPublished')}
+                className="w-5 h-5 rounded text-primary focus:ring-primary/20 bg-surface-container border-outline-variant/50 transition-all cursor-pointer"
+              />
+              <span className="font-bold text-on-surface group-hover:text-primary transition-colors">
+                Xuất bản (Hiển thị)
+              </span>
+            </label>
+          </div>
+        </div>
+        <div className="p-4 md:px-8 md:py-5 bg-[#fff9ef] border-t border-outline-variant/20 shrink-0 flex justify-end gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-3 rounded-2xl font-bold text-on-surface-variant hover:bg-surface-variant transition-colors"
+          >
+            Hủy bỏ
+          </button>
+          <button
+            type="submit"
+            disabled={isPending}
+            className="px-8 py-3 rounded-2xl bg-primary text-white font-bold hover:bg-[#8a1c14] hover:shadow-lg transition-all flex gap-2 items-center active:scale-95"
+          >
+            {isPending ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <Feather size={18} />
+            )}
+            {data ? 'Cập nhật' : 'Thêm bình phẩm'}
+          </button>
+        </div>
+      </form>
+    </DialogWrapper>
+  )
+}
