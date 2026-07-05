@@ -98,6 +98,19 @@ export const getEventUi = (ev) => {
   return FALLBACK_EVENT_UI
 }
 
+// Escape HTML rồi áp vài định dạng markdown tối giản (**đậm**, tiêu đề #, xuống dòng).
+// Escape TRƯỚC để nội dung AI trả về không chèn được HTML tùy ý vào dangerouslySetInnerHTML.
+// Bài luận (write_essay) trả về dạng markdown -> dòng tiêu đề "## …" chuyển thành in đậm.
+// Dùng chung cho bong bóng câu trả lời (box chat) và bản thảo bài luận (panel suy nghĩ).
+export const formatRichText = (text = '') =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
+    .replace(/^#{1,6}\s+(.*)$/gm, '<b>$1</b>')
+    .replace(/\n/g, '<br/>')
+
 // Các loại event KHÔNG hiển thị trên timeline "quá trình suy nghĩ":
 //  - done: câu trả lời cuối hiện ở bong bóng riêng
 //  - route: chỉ là mã kỹ thuật, trùng ý với intent

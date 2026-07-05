@@ -14,6 +14,7 @@ import {
 import {
   sendChatMessage,
   streamChat,
+  formatRichText,
   CHAT_MODELS,
   DEFAULT_CHAT_MODEL,
 } from '../api/chat.api'
@@ -21,15 +22,13 @@ import { ThinkingSummaryChip } from './ThinkingSummaryChip'
 import { ThinkingProcessPanel } from './ThinkingProcessPanel'
 import chatbotInsideIcon from '../../../assets/images/chatbot-inside-icon.png'
 
-// Escape HTML rồi áp vài định dạng markdown tối giản (**đậm**, xuống dòng).
-// Escape trước để nội dung AI trả về không chèn được HTML tùy ý vào dangerouslySetInnerHTML.
-const formatMessage = (text = '') =>
-  text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')
-    .replace(/\n/g, '<br/>')
+// Nhận diện event "bắt đầu viết bài luận" -> mốc để mở 1 bong bóng bản thảo mới trong
+// panel suy nghĩ. Quan trọng khi judge YÊU CẦU LÀM LẠI: write_essay chạy lại và phát 1
+// CỤM token mới -> mỗi lượt là 1 bản thảo riêng, GIỮ LẠI được trong panel.
+const isEssayStart = (ev) =>
+  ev?.type === 'status' &&
+  ev?.node === 'write_essay' &&
+  /đang viết/i.test(ev.content || '')
 
 // Cập nhật bong bóng assistant cuối cùng trong mảng messages (dùng khi stream đổ event dần).
 const updateLastAssistant = (messages, fn) => {
@@ -63,6 +62,78 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   // Cho phép hủy stream đang chạy khi đóng popup / rời trang.
   const abortRef = useRef(null)
 
+  // Bộ gõ chữ (typewriter) cho BẢN THẢO bài luận — hiển thị trong PANEL SUY NGHĨ bên
+  // trái, KHÔNG vào box chat. Backend tạo xong bài rồi "tua" token ra gần như MỘT CỤM
+  // ngay trước `done`; ta đệm token vào buffer rồi hé lộ dần cho mượt. Mỗi lượt viết
+  // (kể cả retry) là 1 bong bóng bản thảo riêng -> lượt bị YÊU CẦU LÀM LẠI vẫn được
+  // GIỮ LẠI trong panel thay vì biến mất. Box chat chỉ hiện câu trả lời cuối (done.answer).
+  const draftRef = useRef({ target: '', shown: 0, timer: null, done: false })
+
+  const stopDraft = () => {
+    if (draftRef.current.timer) {
+      clearInterval(draftRef.current.timer)
+      draftRef.current.timer = null
+    }
+  }
+
+  // Ghi text vào event bản thảo đang stream (event 'essay' cuối cùng của bong bóng hiện tại).
+  const paintDraft = (text) =>
+    setMessages((prev) =>
+      updateLastAssistant(prev, (m) => {
+        if (!m.events?.length) return m
+        const events = m.events.slice()
+        for (let i = events.length - 1; i >= 0; i--) {
+          if (events[i].type === 'essay') {
+            events[i] = { ...events[i], content: text }
+            return { ...m, events }
+          }
+        }
+        return m
+      }),
+    )
+
+  const startDraft = () => {
+    if (draftRef.current.timer) return
+    draftRef.current.timer = setInterval(() => {
+      const t = draftRef.current
+      if (t.shown < t.target.length) {
+        // Hé lộ nhanh khi còn nhiều chữ, chậm dần về cuối -> cảm giác "gõ" tự nhiên.
+        const remaining = t.target.length - t.shown
+        t.shown = Math.min(
+          t.target.length,
+          t.shown + Math.max(4, Math.ceil(remaining / 20)),
+        )
+        paintDraft(t.target.slice(0, t.shown))
+      } else if (t.done) {
+        stopDraft()
+      }
+    }, 24)
+  }
+
+  // Chốt NGAY bản thảo hiện tại: dừng gõ + hiện đủ toàn bộ text đã nhận. Dùng khi bắt
+  // đầu lượt mới (retry) — phải khoá bong bóng cũ trước khi mở bong bóng mới, tránh gõ
+  // nhầm phần còn lại vào bản thảo mới.
+  const snapDraft = () => {
+    stopDraft()
+    const t = draftRef.current
+    t.shown = t.target.length
+    if (t.target) paintDraft(t.target)
+  }
+
+  // Chốt bản thảo cuối (gõ nốt phần còn lại rồi dừng). Dùng khi nhận `done` / kết thúc
+  // sớm — lúc này không còn bong bóng mới nào mở nữa nên cứ để gõ hết cho mượt.
+  const finalizeDraft = () => {
+    const t = draftRef.current
+    t.done = true
+    if (t.shown >= t.target.length) {
+      t.shown = t.target.length
+      if (t.target) paintDraft(t.target)
+      stopDraft()
+    } else {
+      startDraft()
+    }
+  }
+
   const activeModel =
     CHAT_MODELS.find((m) => m.id === selectedModel) ?? CHAT_MODELS[0]
 
@@ -80,6 +151,10 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
       },
     ])
 
+    // Reset bộ gõ bản thảo cho lượt mới (dừng interval cũ nếu còn sót).
+    stopDraft()
+    draftRef.current = { target: '', shown: 0, timer: null, done: false }
+
     if (!threadIdRef.current) threadIdRef.current = crypto.randomUUID()
     const controller = new AbortController()
     abortRef.current = controller
@@ -90,9 +165,39 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
         threadId: threadIdRef.current,
         signal: controller.signal,
         onEvent: (ev) => {
+          // token = mẩu chữ bản thảo bài luận -> gõ vào PANEL SUY NGHĨ (bong bóng 'essay'
+          // đang mở), KHÔNG vào box chat. (BE tua cả cụm token ngay trước `done`.)
+          if (ev.type === 'token' && ev.is_partial) {
+            draftRef.current.target += ev.content || ''
+            startDraft()
+            return
+          }
+          // Bắt đầu 1 lượt viết bài mới (kể cả khi judge YÊU CẦU LÀM LẠI): chốt bản thảo
+          // cũ rồi mở 1 bong bóng 'essay' mới trong timeline -> mọi lượt đều được giữ lại.
+          const essayStart = isEssayStart(ev)
+          if (essayStart) {
+            snapDraft()
+            draftRef.current = {
+              target: '',
+              shown: 0,
+              timer: null,
+              done: false,
+            }
+          }
           setMessages((prev) =>
             updateLastAssistant(prev, (m) => {
               const events = [...(m.events || []), ev]
+              // Ngay sau status "Đang viết bài luận…" -> chèn 1 bong bóng bản thảo rỗng
+              // để token đổ dần vào (hiển thị trong panel suy nghĩ).
+              if (essayStart)
+                events.push({
+                  type: 'essay',
+                  node: 'write_essay',
+                  content: '',
+                  is_partial: true,
+                  payload: { ui: { group: 'final' } },
+                })
+              // Câu trả lời cuối CHỈ hiện ở box chat, lấy từ done.answer (nguồn sự thật).
               if (ev.type === 'done')
                 return {
                   ...m,
@@ -107,16 +212,11 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
                   streaming: false,
                   error: ev.content || 'Lỗi stream',
                 }
-              // token đang gõ dở (tương lai): nối vào câu trả lời
-              if (ev.type === 'token' && ev.is_partial)
-                return {
-                  ...m,
-                  events,
-                  content: (m.content || '') + (ev.content || ''),
-                }
               return { ...m, events }
             }),
           )
+          // done -> gõ nốt bản thảo cuối trong panel (không đụng vào box chat).
+          if (ev.type === 'done') finalizeDraft()
         },
       })
     } catch (e) {
@@ -129,6 +229,8 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
           error: m.content ? null : `Mất kết nối stream (${detail}).`,
         })),
       )
+      // Chốt bản thảo đang gõ dở (nếu có) rồi dừng bộ gõ.
+      finalizeDraft()
     } finally {
       abortRef.current = null
       // Nếu stream đóng mà chưa kịp có done -> vẫn tắt trạng thái đang chạy.
@@ -204,9 +306,16 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     if (!isOpen) {
       abortRef.current?.abort()
       abortRef.current = null
+      stopDraft()
     }
   }, [isOpen])
-  useEffect(() => () => abortRef.current?.abort(), [])
+  useEffect(
+    () => () => {
+      abortRef.current?.abort()
+      stopDraft()
+    },
+    [],
+  )
 
   // Đóng popup: reset panel suy nghĩ để lần mở sau không tự bung lại panel cũ.
   const handleClose = () => {
@@ -420,7 +529,7 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
                     >
                       <span
                         dangerouslySetInnerHTML={{
-                          __html: formatMessage(msg.content),
+                          __html: formatRichText(msg.content),
                         }}
                       />
                     </div>
