@@ -52,7 +52,7 @@ export const HomePage = () => {
     <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center bg-[#fff9ef] relative overflow-hidden">
       <div className="absolute inset-0 opacity-[0.03] watermark-pattern pointer-events-none"></div>
 
-      <main className="max-w-[clamp(20rem,90vw,120rem)] mx-auto px-[clamp(1rem,4vw,5.5rem)] w-full flex flex-col md:flex-row items-center gap-[clamp(2rem,6vw,6.5rem)] relative z-10 py-[clamp(3rem,8vw,9rem)]">
+      <main className="max-w-[clamp(20rem,90vw,120rem)] mx-auto px-[clamp(1rem,4vw,5.5rem)] w-full flex flex-col md:flex-row items-center gap-[clamp(2rem,6vw,6.5rem)] relative z-10 pt-[clamp(1.5rem,4vw,5rem)] pb-[clamp(3rem,8vw,9rem)]">
         <div className="flex-1 space-y-[clamp(1.25rem,3vw,3.25rem)]">
           <h1 className="font-title text-[clamp(2rem,4vw+1rem,6rem)] font-bold text-primary leading-tight">
             Khám phá kho tàng văn học Việt Nam bằng một cách hoàn toàn mới
@@ -78,8 +78,8 @@ export const HomePage = () => {
           </div>
         </div>
 
-        <div className="hidden md:block flex-1">
-          <div className="aspect-square bg-surface-container-high rounded-[40px] flex items-center justify-center shadow-2xl border border-white/50 overflow-hidden">
+        <div className="hidden md:flex flex-1 justify-center self-start">
+          <div className="w-full max-w-[34rem] h-[clamp(420px,40vw,480px)] bg-surface-container-high rounded-[40px] flex items-center justify-center shadow-2xl border border-white/50 overflow-hidden">
             {/* Bạn thay ảnh phù hợp ở đây */}
           </div>
         </div>
