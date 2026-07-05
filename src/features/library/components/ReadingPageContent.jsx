@@ -15,6 +15,7 @@ import {
 } from '../hooks/useReading'
 import { useAuthStore } from '../../auth/store/auth.store'
 import { CommentarySection } from './CommentarySection'
+import { ReviewSection } from './ReviewSection'
 
 let sessionGuestNotes = []
 
@@ -697,6 +698,9 @@ export const ReadingPageContent = ({
 
         {/* Khu vực Bình phẩm */}
         <CommentarySection workId={work?.id} isFocusMode={isFocusMode} />
+
+        {/* Khu vực Đánh giá của độc giả */}
+        <ReviewSection workId={work?.id} isFocusMode={isFocusMode} />
       </article>
     </main>
   )

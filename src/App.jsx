@@ -22,6 +22,9 @@ import { WorkDetailAdminPage } from './features/library/pages/WorkDetailAdminPag
 import { AuthorAdminPage } from './features/author/pages/AuthorAdminPage'
 import { TagAdminPage } from './features/tag/pages/TagAdminPage'
 import { AdminRoute } from './components/common/AdminRoute'
+import { MyReviewsPage } from './features/library/pages/MyReviewsPage'
+import { AdminReviewPage } from './features/library/pages/AdminReviewPage'
+
 // Khởi tạo một instance của QueryClient
 const queryClient = new QueryClient()
 
@@ -51,6 +54,7 @@ export default function App() {
               {/* Luồng quên mật khẩu: nhập email → nhận OTP → đặt lại */}
               <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
               <Route path="/dat-lai-mat-khau" element={<ResetPasswordPage />} />
+              <Route path="/ca-nhan/reviews" element={<MyReviewsPage />} />
               {/* --- ADMIN ROUTES --- */}
               <Route element={<AdminRoute />}>
                 <Route
@@ -65,6 +69,10 @@ export default function App() {
                   element={<WorkDetailAdminPage />}
                 />
                 <Route path="/admin/the" element={<TagAdminPage />} />
+                <Route
+                  path="/admin/duyet-review"
+                  element={<AdminReviewPage />}
+                />
               </Route>
             </Routes>
           </div>
