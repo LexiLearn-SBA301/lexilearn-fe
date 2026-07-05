@@ -494,55 +494,68 @@ export const ThinkingProcessPanel = ({
     : 'right-0 md:right-[424px]'
 
   return (
-    <div
-      className={`fixed inset-y-0 left-0 z-[78] flex flex-col ${OVERLAY_DARKNESS} ${OVERLAY_BLUR} animate-in fade-in duration-500 ${rightInset}`}
-    >
-      {/* Header trên nền tối */}
-      <div className="flex items-center justify-between px-6 py-4 flex-shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg">
-            {streaming ? (
-              <Loader2 size={16} className="text-white animate-spin" />
-            ) : (
-              <Brain size={16} className="text-white" />
-            )}
-          </div>
-          <div>
-            <h4 className="font-title text-[15px] font-black text-white leading-tight [text-shadow:0_1px_4px_rgba(0,0,0,0.4)]">
-              Quá trình suy nghĩ
-            </h4>
-            <p className="text-[10px] text-white/65 font-bold tracking-[0.12em] uppercase mt-0.5">
-              Hội đồng phê bình tranh luận
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={onClose}
-          className="p-2 rounded-full bg-white/15 backdrop-blur-md border border-white/20 hover:bg-white/30 text-white/90 shadow-lg transition-all"
-          title="Đóng"
-        >
-          <X size={16} />
-        </button>
-      </div>
-
-      {/* Danh sách bong bóng nổi trên nền tối. Bấm vùng tối trống -> đóng. */}
+    <>
+      {/* Nền mờ TOÀN màn hình, nằm DƯỚI popup chat (z < 80) nên popup nổi lên trên. Nhờ
+          phủ kín cả phía sau popup mà góc bo tròn và cạnh trên–dưới của popup KHÔNG còn
+          lộ mép cứng của lớp phủ (bug cũ: lớp phủ chỉ chiếm nửa trái -> hở viền). Bấm ra
+          vùng nền -> đóng panel. */}
       <div
-        onClick={(e) => {
-          if (e.target === e.currentTarget) onClose()
-        }}
-        className="flex-1 overflow-y-auto custom-scrollbar px-5 pb-8 pt-1 space-y-3"
-      >
-        {rows}
+        onClick={onClose}
+        className={`fixed inset-0 z-[78] ${OVERLAY_DARKNESS} ${OVERLAY_BLUR} animate-in fade-in duration-500`}
+      />
 
-        {streaming && (
-          <div className="flex items-center gap-1.5 pl-3 pt-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce" />
-            <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce [animation-delay:0.2s]" />
-            <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce [animation-delay:0.4s]" />
+      {/* Nội dung "quá trình suy nghĩ" — chỉ chiếm vùng bên trái box chat để bong bóng
+          không luồn xuống dưới popup. Nền trong suốt (độ mờ do lớp nền phía dưới lo). */}
+      <div
+        className={`fixed inset-y-0 left-0 z-[79] flex flex-col animate-in fade-in duration-500 ${rightInset}`}
+      >
+        {/* Header trên nền tối */}
+        <div className="flex items-center justify-between px-6 py-4 flex-shrink-0">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg">
+              {streaming ? (
+                <Loader2 size={16} className="text-white animate-spin" />
+              ) : (
+                <Brain size={16} className="text-white" />
+              )}
+            </div>
+            <div>
+              <h4 className="font-title text-[15px] font-black text-white leading-tight [text-shadow:0_1px_4px_rgba(0,0,0,0.4)]">
+                Quá trình suy nghĩ
+              </h4>
+              <p className="text-[10px] text-white/65 font-bold tracking-[0.12em] uppercase mt-0.5">
+                Hội đồng phê bình tranh luận
+              </p>
+            </div>
           </div>
-        )}
-        <div ref={endRef} />
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full bg-white/15 backdrop-blur-md border border-white/20 hover:bg-white/30 text-white/90 shadow-lg transition-all"
+            title="Đóng"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Danh sách bong bóng nổi trên nền tối. Bấm vùng tối trống -> đóng. */}
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) onClose()
+          }}
+          className="flex-1 overflow-y-auto custom-scrollbar px-5 pb-8 pt-1 space-y-3"
+        >
+          {rows}
+
+          {streaming && (
+            <div className="flex items-center gap-1.5 pl-3 pt-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce" />
+              <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce [animation-delay:0.2s]" />
+              <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce [animation-delay:0.4s]" />
+            </div>
+          )}
+          <div ref={endRef} />
+        </div>
       </div>
-    </div>
+    </>
   )
 }
