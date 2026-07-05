@@ -16,8 +16,13 @@ import {
   CircleCheck,
   TriangleAlert,
   Reply,
+  FileText,
 } from 'lucide-react'
-import { getEventUi, isHiddenThinkingEvent } from '../api/chat.api'
+import {
+  getEventUi,
+  isHiddenThinkingEvent,
+  formatRichText,
+} from '../api/chat.api'
 
 // ============================================================================
 // 🎛️  CHỈNH NHANH LỚP PHỦ (sửa trực tiếp 2 dòng dưới đây)
@@ -84,6 +89,15 @@ const VERDICT_LABEL = {
   retry: 'YÊU CẦU LÀM LẠI',
   reject: 'HẾT LƯỢT — DÙNG BẢN TỐT NHẤT',
 }
+
+// 3 cổng giám khảo. Phân biệt qua node "judge:<stage>" (event judge) hoặc
+// payload.stage (event retry). Giúp người xem biết đang chấm khâu nào.
+const JUDGE_STAGE_LABEL = {
+  prepare_context: 'Ngữ cảnh',
+  critics_debate: 'Tranh luận',
+  write_essay: 'Bài luận',
+}
+const judgeStageLabel = (stage) => JUDGE_STAGE_LABEL[stage] ?? null
 
 // Tên + màu của từng nhà phê bình (để hiện "reply tới ai" ở Vòng 2, vì rebuttal
 // chỉ cho biết variant của critic bị nhắm tới). Màu khớp bảng màu của BE.
@@ -255,6 +269,7 @@ const CriticBubble = ({ ev, ui, targetIds, onJump, highlighted }) => {
 const JudgeCard = ({ ev, ui }) => {
   const verdict = ev.payload?.verdict
   const scores = ev.payload?.scores
+  const stageLabel = judgeStageLabel(ev.node?.replace('judge:', ''))
   return (
     <div className="flex justify-center animate-in fade-in zoom-in-95 duration-500">
       <div
@@ -272,7 +287,8 @@ const JudgeCard = ({ ev, ui }) => {
             style={{ color: ui.color }}
             className="text-[11.5px] font-black tracking-wider uppercase"
           >
-            Giám khảo · {VERDICT_LABEL[verdict] ?? verdict ?? 'chấm điểm'}
+            Giám khảo{stageLabel ? ` · ${stageLabel}` : ''} ·{' '}
+            {VERDICT_LABEL[verdict] ?? verdict ?? 'chấm điểm'}
           </span>
         </div>
         {ev.content && (
@@ -297,17 +313,25 @@ const JudgeCard = ({ ev, ui }) => {
   )
 }
 
-// Thông báo giám khảo yêu cầu làm lại.
-const RetryNote = ({ ev }) => (
-  <div className="flex justify-center animate-in fade-in duration-500">
-    <div className="flex items-center gap-2 bg-[#fef3c7] border border-[#f59e0b]/50 rounded-full px-4 py-1.5 shadow-lg">
-      <RefreshCw size={13} className="text-[#b45309]" />
-      <span className="text-[11.5px] font-bold text-[#b45309]">
-        Làm lại{ev.content ? `: ${ev.content}` : ''}
-      </span>
+// Thông báo giám khảo yêu cầu làm lại. Hiện rõ khâu bị làm lại + số lượt (attempt/limit)
+// để người xem hiểu vì sao cụm event của tool tương ứng sắp XUẤT HIỆN LẠI.
+const RetryNote = ({ ev }) => {
+  const { stage, attempt, limit } = ev.payload ?? {}
+  const stageLabel = judgeStageLabel(stage)
+  const loop = attempt && limit ? ` · Lượt ${attempt}/${limit}` : ''
+  return (
+    <div className="flex justify-center animate-in fade-in duration-500">
+      <div className="flex items-center gap-2 bg-[#fef3c7] border border-[#f59e0b]/50 rounded-full px-4 py-1.5 shadow-lg">
+        <RefreshCw size={13} className="text-[#b45309]" />
+        <span className="text-[11.5px] font-bold text-[#b45309]">
+          Làm lại{stageLabel ? ` ${stageLabel}` : ''}
+          {loop}
+          {ev.content ? `: ${ev.content}` : ''}
+        </span>
+      </div>
     </div>
-  </div>
-)
+  )
+}
 
 // Bước trung gian trung tính (điều phối / truy hồi / trạng thái / bảng tin).
 const SystemNote = ({ ev, ui }) => (
@@ -334,6 +358,37 @@ const SystemNote = ({ ev, ui }) => (
   </div>
 )
 
+// Bản thảo bài luận đang được viết (event 'essay'). Hiển thị NGAY TRONG panel suy nghĩ
+// dưới dạng 1 "trang giấy" — mỗi lượt viết (kể cả lượt bị YÊU CẦU LÀM LẠI) là 1 bản
+// thảo riêng, GIỮ LẠI trong timeline. Câu trả lời cuối cùng vẫn nằm ở box chat.
+const EssayDraftBubble = ({ ev }) => {
+  const text = ev.content || ''
+  return (
+    <div className="flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-3 duration-500">
+      <div className="flex items-center gap-2 px-1">
+        <div className="w-7 h-7 rounded-full flex items-center justify-center shadow-lg flex-shrink-0 ring-2 ring-white/25 bg-[#b45309]">
+          <FileText size={14} className="text-white" />
+        </div>
+        <span className="text-[12.5px] font-bold text-white/90 [text-shadow:0_1px_3px_rgba(0,0,0,0.35)]">
+          Bản thảo bài luận
+        </span>
+      </div>
+      <div className="bg-white rounded-2xl rounded-tl-md px-4 py-3.5 shadow-xl border border-[#83746d]/15 max-h-[440px] overflow-y-auto custom-scrollbar">
+        {text ? (
+          <div
+            className="text-[13px] leading-[1.75] text-[#2b211c] font-quote"
+            dangerouslySetInnerHTML={{ __html: formatRichText(text) }}
+          />
+        ) : (
+          <span className="text-[12.5px] text-[#83746d] italic">
+            Đang soạn bản thảo…
+          </span>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const RoundDivider = ({ label }) => (
   <div className="flex items-center gap-3 py-1">
     <span className="flex-1 h-px bg-white/25" />
@@ -350,6 +405,7 @@ const renderRow = (ev, criticProps) => {
     return <CriticBubble ev={ev} ui={ui} {...criticProps} />
   if (ev.type === 'judge') return <JudgeCard ev={ev} ui={ui} />
   if (ev.type === 'retry') return <RetryNote ev={ev} />
+  if (ev.type === 'essay') return <EssayDraftBubble ev={ev} />
   return <SystemNote ev={ev} ui={ui} />
 }
 
