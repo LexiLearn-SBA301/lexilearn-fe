@@ -72,6 +72,8 @@ export const ReadingPageSidebar = ({
   setIsFilterDropdownOpen,
   sidebarWidth,
   handleResizeStart,
+  isPurePoetry,
+  activeSectionId,
 }) => {
   return (
     <>
@@ -165,10 +167,14 @@ export const ReadingPageSidebar = ({
           {sidebarTab === 'muc-luc' && (
             <div className="flex flex-col gap-2 animate-in fade-in duration-300">
               <div className="mb-2 mt-1 text-[10px] font-bold uppercase tracking-widest text-[#83746d] ml-2 flex items-center gap-2">
-                <BookOpen size={12} /> {sections?.length || 0} Chương
+                <BookOpen size={12} /> {sections?.length || 0}{' '}
+                {isPurePoetry ? 'Phần' : 'Chương'}
               </div>
               {sections?.map((section) => {
-                const isActive = currentSectionId === section.id
+                const isActive =
+                  (isPurePoetry ? activeSectionId : currentSectionId) ===
+                  section.id
+                const unitLabel = isPurePoetry ? 'Phần' : 'Chương'
                 return (
                   <button
                     key={section.id}
@@ -189,13 +195,13 @@ export const ReadingPageSidebar = ({
                       <div className="flex flex-col">
                         {!isActive && section.title && (
                           <span className="text-[10px] font-bold uppercase tracking-wider opacity-50 mb-0.5">
-                            Chương {section.number}
+                            {unitLabel} {section.number}
                           </span>
                         )}
                         <span
                           className={`line-clamp-2 ${isActive ? 'font-bold text-[15px]' : 'font-medium text-sm'}`}
                         >
-                          {section.title || `Chương ${section.number}`}
+                          {section.title || `${unitLabel} ${section.number}`}
                         </span>
                       </div>
                     </div>

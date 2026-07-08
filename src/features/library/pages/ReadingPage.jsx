@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   useGetSections,
   useGetSectionDetail,
+  useGetFullSections,
   useGetArtisticFeatures,
   useGetCharacters,
 } from '../hooks/useWorkSection'
@@ -24,10 +25,34 @@ export const ReadingPage = () => {
     work?.id,
   )
 
+  const isPurePoetry =
+    sections &&
+    sections.length > 0 &&
+    sections.every((s) => s.contentType === 'POETRY')
+
+  const { data: fullSections, isLoading: isFullSectionsLoading } =
+    useGetFullSections(work?.id, isPurePoetry)
+
   const currentSectionId =
     sectionId || (sections && sections.length > 0 ? sections[0].id : null)
-  const { data: currentSection, isLoading: isSectionLoading } =
-    useGetSectionDetail(work?.id, currentSectionId)
+  const { data: currentSectionDetail, isLoading: isSectionLoading } =
+    useGetSectionDetail(work?.id, currentSectionId, !isPurePoetry)
+
+  const [activeSectionId, setActiveSectionId] = useState(null)
+
+  const currentSection = isPurePoetry
+    ? fullSections?.find(
+        (s) => s.id === (activeSectionId || currentSectionId),
+      ) ||
+      fullSections?.[0] ||
+      null
+    : currentSectionDetail
+
+  const sectionsToRender = isPurePoetry
+    ? fullSections || []
+    : currentSection
+      ? [currentSection]
+      : []
 
   // Fetch Nghệ thuật & Nhân vật (Cho Sidebar)
   const { data: artisticFeatures, isLoading: isFeaturesLoading } =
@@ -81,7 +106,19 @@ export const ReadingPage = () => {
       // eslint-disable-next-line
       setIsCompleted(bookmark.isCompleted)
 
-      if (!sectionId && bookmark.currentSection) {
+      if (isPurePoetry) {
+        if (bookmark.currentSection?.id) {
+          setActiveSectionId(bookmark.currentSection.id)
+          setTimeout(() => {
+            const el = document.getElementById(
+              `section-${bookmark.currentSection.id}`,
+            )
+            if (el) {
+              el.scrollIntoView({ behavior: 'auto', block: 'start' })
+            }
+          }, 300)
+        }
+      } else if (!sectionId && bookmark.currentSection) {
         // User opened book without specific section, restore automatically
         setTargetScrollRatio(
           bookmark.position / (currentSection?.content?.length || 1),
@@ -124,6 +161,7 @@ export const ReadingPage = () => {
     slug,
     user,
     currentSection,
+    isPurePoetry,
   ])
 
   // Restore scroll when targetScrollRatio is set and content is ready
@@ -176,6 +214,25 @@ export const ReadingPage = () => {
       if (existingBookmark?.isCompleted) return
 
       const sp = latestScrollRef.current
+
+      if (isPurePoetry) {
+        const activeId =
+          activeSectionId || currentSectionId || fullSections?.[0]?.id
+        if (!activeId) return
+        upsertBookmark({
+          workId: work.id,
+          data: {
+            currentSectionId: activeId,
+            position: 0,
+            progressPercent: parseFloat(sp.toFixed(2)),
+            isCompleted: false,
+          },
+        })
+        return
+      }
+
+      if (!activeSection?.content) return
+
       const position = Math.floor(activeSection.content.length * (sp / 100))
       const totalSections = sections?.length || 1
       const currentIdx =
@@ -209,7 +266,15 @@ export const ReadingPage = () => {
       saveProgress()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentSection?.id, user, work?.id, sections?.length, upsertBookmark])
+  }, [
+    currentSection?.id,
+    user,
+    work?.id,
+    sections?.length,
+    upsertBookmark,
+    isPurePoetry,
+    activeSectionId,
+  ])
 
   // --- RESIZABLE SIDEBAR LOGIC ---
   const [sidebarWidth, setSidebarWidth] = useState(380) // Default width 380px (đẹp như hình)
@@ -266,15 +331,44 @@ export const ReadingPage = () => {
       scrollRef.current.scrollTo({ top: 0, behavior: 'smooth' })
   }, [currentSectionId, targetScrollRatio])
 
-  const currentIndex =
-    sections?.findIndex((s) => s.id === currentSectionId) ?? -1
+  const activeId = isPurePoetry
+    ? activeSectionId || currentSectionId
+    : currentSectionId
+  const currentIndex = sections?.findIndex((s) => s.id === activeId) ?? -1
   const prevSection = currentIndex > 0 ? sections[currentIndex - 1] : null
   const nextSection =
     currentIndex < (sections?.length || 0) - 1
       ? sections[currentIndex + 1]
       : null
 
+  const isNavigatingRef = useRef(false)
+  const navTimeoutRef = useRef(null)
+
   const handleNavigate = (id) => {
+    if (isPurePoetry) {
+      isNavigatingRef.current = true
+      if (navTimeoutRef.current) clearTimeout(navTimeoutRef.current)
+      navTimeoutRef.current = setTimeout(() => {
+        isNavigatingRef.current = false
+      }, 700)
+
+      setActiveSectionId(id)
+      const el = document.getElementById(`section-${id}`)
+      if (el && scrollRef.current) {
+        const containerRect = scrollRef.current.getBoundingClientRect()
+        const elRect = el.getBoundingClientRect()
+        const offsetTop =
+          elRect.top - containerRect.top + scrollRef.current.scrollTop - 90
+        scrollRef.current.scrollTo({
+          top: Math.max(0, offsetTop),
+          behavior: 'auto',
+        })
+      } else if (el) {
+        el.scrollIntoView({ behavior: 'auto', block: 'start' })
+      }
+      if (window.innerWidth < 1024) setIsSidebarOpen(false)
+      return
+    }
     navigate(`/thu-vien/${slug}/doc/${id}`)
     if (window.innerWidth < 1024) setIsSidebarOpen(false)
   }
@@ -308,7 +402,7 @@ export const ReadingPage = () => {
   if (
     isWorkLoading ||
     isSectionsLoading ||
-    isSectionLoading ||
+    (isPurePoetry ? isFullSectionsLoading : isSectionLoading) ||
     isBookmarksLoading
   ) {
     return (
@@ -353,6 +447,8 @@ export const ReadingPage = () => {
         setIsFilterDropdownOpen={setIsFilterDropdownOpen}
         sidebarWidth={sidebarWidth}
         handleResizeStart={handleResizeStart}
+        isPurePoetry={isPurePoetry}
+        activeSectionId={activeSectionId}
       />
 
       <ReadingPageContent
@@ -376,6 +472,11 @@ export const ReadingPage = () => {
         isFocusMode={isFocusMode}
         setIsFocusMode={setIsFocusMode}
         totalSections={sections?.length || 1}
+        sectionsToRender={sectionsToRender}
+        isPurePoetry={isPurePoetry}
+        activeSectionId={activeSectionId}
+        setActiveSectionId={setActiveSectionId}
+        isNavigatingRef={isNavigatingRef}
       />
 
       {/* Nút nổi + popup chatbot do <ChatWidget /> ở App quản lý chung cho mọi trang */}

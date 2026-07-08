@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Menu,
@@ -168,28 +168,106 @@ export const ReadingPageContent = ({
   upsertBookmark,
   isFocusMode,
   setIsFocusMode,
-  totalSections,
+  sectionsToRender,
+  isPurePoetry,
+  activeSectionId,
+  setActiveSectionId,
+  isNavigatingRef,
 }) => {
   const [selectionRect, setSelectionRect] = useState(null)
   const [selectedText, setSelectedText] = useState('')
   const [selectionRange, setSelectionRange] = useState(null)
+  const [selectedSection, setSelectedSection] = useState(null)
 
   const user = useAuthStore((s) => s.user)
   const [localNotes, setLocalNotes] = useState(sessionGuestNotes)
 
-  const { data: serverNotes } = useGetSectionNotes(currentSection?.id, !!user)
-  const notes = [
-    ...(serverNotes || []),
-    ...localNotes.filter((n) => n.sectionId === currentSection?.id),
-  ]
+  const activeSecId = activeSectionId || currentSection?.id
+  const { data: serverNotes } = useGetSectionNotes(activeSecId, !!user)
+  const notes = useMemo(
+    () => [...(serverNotes || []), ...localNotes],
+    [serverNotes, localNotes],
+  )
 
   const { mutate: createNote } = useCreateNote()
   const { mutate: deleteNote } = useDeleteNote()
   const [activeNote, setActiveNote] = useState(null)
 
   const parsedParagraphs = useMemo(() => {
-    return getParagraphs(currentSection?.content, notes)
-  }, [currentSection?.content, notes])
+    const secNotes = notes.filter((n) => n.sectionId === currentSection?.id)
+    return getParagraphs(currentSection?.content, secNotes)
+  }, [currentSection?.content, currentSection?.id, notes])
+
+  const activeSecIdRef = useRef(activeSecId)
+  useEffect(() => {
+    activeSecIdRef.current = activeSecId
+  }, [activeSecId])
+
+  useEffect(() => {
+    if (!isPurePoetry || !sectionsToRender?.length || !setActiveSectionId)
+      return
+
+    const sectionElements = sectionsToRender
+      .map((s) => ({
+        id: s.id,
+        el: document.getElementById(`section-${s.id}`),
+      }))
+      .filter((item) => item.el)
+
+    if (!sectionElements.length) return
+
+    let rafId = null
+    const updateActiveSection = () => {
+      if (rafId || isNavigatingRef?.current) return
+      rafId = requestAnimationFrame(() => {
+        rafId = null
+        if (isNavigatingRef?.current) return
+
+        const firstEl = document.getElementById(
+          `section-${sectionsToRender[0]?.id}`,
+        )
+        const scrollContainer = firstEl?.closest('.overflow-y-auto') || window
+        const isAtBottom =
+          scrollContainer.scrollTop + scrollContainer.clientHeight >=
+          scrollContainer.scrollHeight - 30
+
+        let currentActiveId = sectionElements[0].id
+        if (isAtBottom) {
+          currentActiveId = sectionElements[sectionElements.length - 1].id
+        } else {
+          for (const item of sectionElements) {
+            const rect = item.el.getBoundingClientRect()
+            if (rect.top <= 180 && rect.bottom > 90) {
+              currentActiveId = item.id
+              break
+            }
+          }
+        }
+
+        if (currentActiveId && currentActiveId !== activeSecIdRef.current) {
+          setActiveSectionId(currentActiveId)
+        }
+      })
+    }
+
+    updateActiveSection()
+
+    const firstEl = document.getElementById(
+      `section-${sectionsToRender[0]?.id}`,
+    )
+    const scrollContainer = firstEl?.closest('.overflow-y-auto') || window
+
+    scrollContainer.addEventListener('scroll', updateActiveSection, {
+      passive: true,
+    })
+    window.addEventListener('scroll', updateActiveSection, { passive: true })
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId)
+      scrollContainer.removeEventListener('scroll', updateActiveSection)
+      window.removeEventListener('scroll', updateActiveSection)
+    }
+  }, [isPurePoetry, sectionsToRender, setActiveSectionId, isNavigatingRef])
 
   const handleMouseUp = () => {
     const selection = window.getSelection()
@@ -205,39 +283,62 @@ export const ReadingPageContent = ({
       )
       const endOffset = getGlobalOffset(range.endContainer, range.endOffset)
 
+      const sectionNode =
+        range.startContainer.nodeType === 3
+          ? range.startContainer.parentElement?.closest(
+              'section[id^="section-"]',
+            )
+          : range.startContainer.closest?.('section[id^="section-"]')
+      const targetSecId = sectionNode
+        ? sectionNode.id.replace('section-', '')
+        : currentSection?.id
+      const targetSec =
+        sectionsToRender?.find((s) => String(s.id) === String(targetSecId)) ||
+        currentSection
+
       if (
         startOffset !== null &&
         endOffset !== null &&
         startOffset < endOffset
       ) {
-        // Use raw content to make sure it matches perfectly
-        const exactText = currentSection.content.substring(
-          startOffset,
-          endOffset,
-        )
+        const exactText = targetSec?.content
+          ? targetSec.content.substring(startOffset, endOffset)
+          : text
         setSelectionRect({
           top: rect.top - 50,
           left: rect.left + rect.width / 2,
         })
-        setSelectedText(exactText)
+        setSelectedText(exactText || text)
         setSelectionRange({ startOffset, endOffset })
+        setSelectedSection(targetSec)
+      } else if (isPurePoetry) {
+        setSelectionRect({
+          top: rect.top - 50,
+          left: rect.left + rect.width / 2,
+        })
+        setSelectedText(text)
+        setSelectionRange(null)
+        setSelectedSection(targetSec)
       } else {
         setSelectionRect(null)
         setSelectedText('')
         setSelectionRange(null)
+        setSelectedSection(null)
       }
     } else {
       setSelectionRect(null)
       setSelectedText('')
       setSelectionRange(null)
+      setSelectedSection(null)
     }
   }
 
   const handleCreateNote = (color) => {
-    if (selectionRange && currentSection) {
+    const targetSec = selectedSection || currentSection
+    if (selectionRange && targetSec) {
       if (user) {
         createNote({
-          sectionId: currentSection.id,
+          sectionId: targetSec.id,
           data: {
             startOffset: selectionRange.startOffset,
             endOffset: selectionRange.endOffset,
@@ -249,7 +350,7 @@ export const ReadingPageContent = ({
       } else {
         const newNote = {
           id: `local-${Date.now()}`,
-          sectionId: currentSection.id,
+          sectionId: targetSec.id,
           startOffset: selectionRange.startOffset,
           endOffset: selectionRange.endOffset,
           highlightedText: selectedText,
@@ -271,7 +372,7 @@ export const ReadingPageContent = ({
   const [lastId, setLastId] = useState(currentSection?.id)
   const [lastNumber, setLastNumber] = useState(currentSection?.number || 0)
 
-  if (currentSection && currentSection.id !== lastId) {
+  if (!isPurePoetry && currentSection && currentSection.id !== lastId) {
     const isNext = currentSection.number > lastNumber
     setNavDirection(isNext ? 'next' : 'prev')
     setLastId(currentSection.id)
@@ -326,29 +427,37 @@ export const ReadingPageContent = ({
             </div>
             <div className="flex items-center gap-3.5">
               <h1 className="font-title text-lg md:text-xl font-bold text-[#412311] truncate max-w-[220px] md:max-w-[450px]">
-                {currentSection?.title || `Chương ${currentSection?.number}`}
+                {isPurePoetry
+                  ? work?.title || 'Thơ ca'
+                  : currentSection?.title || `Chương ${currentSection?.number}`}
               </h1>
 
               {/* Nút chuyển chương Inline */}
-              <div className="flex items-center gap-1 bg-[#412311]/5 rounded-full p-1 border border-[#412311]/10">
-                <button
-                  onClick={() => prevSection && handleNavigate(prevSection.id)}
-                  disabled={!prevSection}
-                  className="p-1.5 text-[#412311]/70 hover:text-[#412311] hover:bg-white rounded-full transition-all disabled:opacity-30 disabled:hover:bg-transparent"
-                  title="Chương trước"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <div className="w-[1px] h-4 bg-[#412311]/15"></div>
-                <button
-                  onClick={() => nextSection && handleNavigate(nextSection.id)}
-                  disabled={!nextSection}
-                  className="p-1.5 text-[#412311]/70 hover:text-[#412311] hover:bg-white rounded-full transition-all disabled:opacity-30 disabled:hover:bg-transparent"
-                  title="Chương tiếp theo"
-                >
-                  <ChevronRight size={18} />
-                </button>
-              </div>
+              {!isPurePoetry && (
+                <div className="flex items-center gap-1 bg-[#412311]/5 rounded-full p-1 border border-[#412311]/10">
+                  <button
+                    onClick={() =>
+                      prevSection && handleNavigate(prevSection.id)
+                    }
+                    disabled={!prevSection}
+                    className="p-1.5 text-[#412311]/70 hover:text-[#412311] hover:bg-white rounded-full transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                    title="Chương trước"
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+                  <div className="w-[1px] h-4 bg-[#412311]/15"></div>
+                  <button
+                    onClick={() =>
+                      nextSection && handleNavigate(nextSection.id)
+                    }
+                    disabled={!nextSection}
+                    className="p-1.5 text-[#412311]/70 hover:text-[#412311] hover:bg-white rounded-full transition-all disabled:opacity-30 disabled:hover:bg-transparent"
+                    title="Chương tiếp theo"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -391,12 +500,16 @@ export const ReadingPageContent = ({
 
       {/* Nội dung Văn Bản */}
       <article
-        key={currentSection?.id}
+        key={isPurePoetry ? work?.id || 'pure-poetry' : currentSection?.id}
         onMouseUp={handleMouseUp}
-        className={`flex-1 w-full max-w-3xl mx-auto px-6 py-12 md:py-20 relative animate-in fade-in duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${
-          navDirection === 'next'
-            ? 'slide-in-from-right-16'
-            : 'slide-in-from-left-16'
+        className={`flex-1 w-full max-w-3xl mx-auto px-6 py-12 md:py-20 relative ${
+          !isPurePoetry
+            ? `animate-in fade-in duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+                navDirection === 'next'
+                  ? 'slide-in-from-right-16'
+                  : 'slide-in-from-left-16'
+              }`
+            : ''
         }`}
       >
         {/* TOOLTIP: BÔI ĐEN HỎI AI & HIGHLIGHT */}
@@ -406,28 +519,31 @@ export const ReadingPageContent = ({
             style={{ top: selectionRect.top, left: selectionRect.left }}
           >
             <div className="flex items-center bg-white shadow-[0_8px_20px_rgba(0,0,0,0.15)] rounded-xl p-1.5 border border-black/5 gap-1.5">
-              <button
-                onClick={() => handleCreateNote('YELLOW')}
-                className="w-6 h-6 rounded-full bg-yellow-200 hover:scale-110 transition-transform shadow-sm"
-              />
-              <button
-                onClick={() => handleCreateNote('GREEN')}
-                className="w-6 h-6 rounded-full bg-green-200 hover:scale-110 transition-transform shadow-sm"
-              />
-              <button
-                onClick={() => handleCreateNote('BLUE')}
-                className="w-6 h-6 rounded-full bg-blue-200 hover:scale-110 transition-transform shadow-sm"
-              />
-              <button
-                onClick={() => handleCreateNote('RED')}
-                className="w-6 h-6 rounded-full bg-red-200 hover:scale-110 transition-transform shadow-sm"
-              />
-              <div className="w-[1px] h-6 bg-black/10 mx-1"></div>
+              {selectionRange && (
+                <>
+                  <button
+                    onClick={() => handleCreateNote('YELLOW')}
+                    className="w-6 h-6 rounded-full bg-yellow-200 hover:scale-110 transition-transform shadow-sm"
+                  />
+                  <button
+                    onClick={() => handleCreateNote('GREEN')}
+                    className="w-6 h-6 rounded-full bg-green-200 hover:scale-110 transition-transform shadow-sm"
+                  />
+                  <button
+                    onClick={() => handleCreateNote('BLUE')}
+                    className="w-6 h-6 rounded-full bg-blue-200 hover:scale-110 transition-transform shadow-sm"
+                  />
+                  <button
+                    onClick={() => handleCreateNote('RED')}
+                    className="w-6 h-6 rounded-full bg-red-200 hover:scale-110 transition-transform shadow-sm"
+                  />
+                  <div className="w-[1px] h-6 bg-black/10 mx-1"></div>
+                </>
+              )}
               <button
                 onClick={() => {
-                  openChat(
-                    `Giải thích cho tôi đoạn văn sau:\n\n"${selectedText}"`,
-                  )
+                  const promptText = `Trong tác phẩm "${work?.title || ''}", giải thích đoạn sau:\n\n"${selectedText}"`
+                  openChat(promptText)
                   setSelectionRect(null)
                   window.getSelection()?.removeAllRanges()
                 }}
@@ -491,124 +607,296 @@ export const ReadingPageContent = ({
           </div>
         )}
 
-        {/* Tiêu đề */}
-        <div className="text-center mb-16 relative">
-          <div
-            className={`inline-block px-4 py-1.5 border rounded-full text-xs font-bold tracking-widest uppercase mb-6 shadow-sm ${
-              isFocusMode
-                ? 'bg-white/5 border-white/10 text-[#ff7261]'
-                : 'bg-[#412311]/5 border-[#412311]/10 text-[#ab3429]'
-            }`}
-          >
-            Trích đoạn Tác phẩm
-          </div>
-          <h2
-            className={`font-title text-4xl md:text-[52px] font-extrabold leading-tight relative z-10 ${
-              isFocusMode ? 'text-[#e8e6e3]' : 'text-[#412311]'
-            }`}
-          >
-            {currentSection?.title || `Chương ${currentSection?.number}`}
-          </h2>
-
-          <div className="mt-10 mb-2 flex items-center justify-center gap-4 opacity-80">
-            <div
-              className={`w-16 md:w-32 h-[1px] bg-gradient-to-r from-transparent ${isFocusMode ? 'to-[#ff7261]/60' : 'to-[#ab3429]/60'}`}
-            ></div>
-            <div
-              className={`w-1.5 h-1.5 rotate-45 ${isFocusMode ? 'bg-[#ff7261]' : 'bg-[#ab3429]'}`}
-            ></div>
-            <div
-              className={`w-16 md:w-32 h-[1px] bg-gradient-to-l from-transparent ${isFocusMode ? 'to-[#ff7261]/60' : 'to-[#ab3429]/60'}`}
-            ></div>
-          </div>
-        </div>
-
-        {/* Typography chuẩn mực: Phân loại Thơ và Văn xuôi */}
-        <div
-          className={`w-full ${
-            currentSection?.contentType !== 'POETRY'
-              ? `prose prose-lg md:prose-xl text-lg md:text-xl max-w-none font-quote leading-[2.2] tracking-wide text-justify hyphens-auto first-letter:text-[72px] first-letter:font-title first-letter:font-black first-letter:mr-2 first-letter:float-left first-letter:mt-1 first-letter:leading-[0.85] ${
+        {/* Tiêu đề & Nội dung */}
+        {isPurePoetry ? (
+          <div className="space-y-12">
+            {/* Tiêu đề chung cho Tác phẩm Thơ */}
+            <div className="text-center mb-16 relative">
+              <div
+                className={`inline-block px-4 py-1.5 border rounded-full text-xs font-bold tracking-widest uppercase mb-6 shadow-sm ${
                   isFocusMode
-                    ? 'text-[#d4d4d4] first-letter:text-[#ff7261] first-letter:[text-shadow:2px_2px_4px_rgba(255,114,97,0.25)]'
-                    : 'text-[#231a0c] first-letter:text-[#ab3429] first-letter:[text-shadow:2px_2px_4px_rgba(171,52,41,0.25)]'
-                }`
-              : ''
-          }`}
-        >
-          {parsedParagraphs.map((p, pIdx) => {
-            const isPoetry =
-              currentSection?.contentType === 'POETRY' ||
-              (currentSection?.contentType === 'MIXED' && p.isPoetry)
+                    ? 'bg-white/5 border-white/10 text-[#ff7261]'
+                    : 'bg-[#412311]/5 border-[#412311]/10 text-[#ab3429]'
+                }`}
+              >
+                Tác phẩm Thơ ca
+              </div>
+              <h2
+                className={`font-title text-4xl md:text-[52px] font-extrabold leading-tight relative z-10 ${
+                  isFocusMode ? 'text-[#e8e6e3]' : 'text-[#412311]'
+                }`}
+              >
+                {work?.title || 'Thơ ca'}
+              </h2>
+              <div className="mt-10 mb-2 flex items-center justify-center gap-4 opacity-80">
+                <div
+                  className={`w-16 md:w-32 h-[1px] bg-gradient-to-r from-transparent ${
+                    isFocusMode ? 'to-[#ff7261]/60' : 'to-[#ab3429]/60'
+                  }`}
+                ></div>
+                <div
+                  className={`w-1.5 h-1.5 rotate-45 ${
+                    isFocusMode ? 'bg-[#ff7261]' : 'bg-[#ab3429]'
+                  }`}
+                ></div>
+                <div
+                  className={`w-16 md:w-32 h-[1px] bg-gradient-to-l from-transparent ${
+                    isFocusMode ? 'to-[#ff7261]/60' : 'to-[#ab3429]/60'
+                  }`}
+                ></div>
+              </div>
+            </div>
 
-            const renderSegments = p.segments.map((seg, sIdx) => {
-              if (seg.isMark) {
-                const colorMap = {
-                  YELLOW: 'bg-yellow-200',
-                  GREEN: 'bg-green-200',
-                  BLUE: 'bg-blue-200',
-                  RED: 'bg-red-200',
-                }
+            <div className="w-fit mx-auto px-4">
+              {sectionsToRender?.map((sec) => {
+                const secNotes = notes.filter((n) => n.sectionId === sec.id)
+                const secParagraphs = getParagraphs(sec.content, secNotes)
                 return (
-                  <mark
-                    key={sIdx}
-                    data-offset={seg.globalOffset}
-                    className={`${colorMap[seg.note.color]} text-inherit bg-opacity-70 rounded-sm px-0.5 mx-px cursor-pointer hover:opacity-80 transition-opacity`}
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      const rect = e.target.getBoundingClientRect()
-                      setActiveNote({
-                        note: seg.note,
-                        rect: {
-                          top: rect.top - 40,
-                          left: rect.left + rect.width / 2,
-                        },
-                      })
-                      setSelectionRect(null)
-                    }}
+                  <section
+                    key={sec.id}
+                    id={`section-${sec.id}`}
+                    className="scroll-mt-28"
                   >
-                    {renderTextWithHiddenTags(seg.text, seg.globalOffset)}
-                  </mark>
+                    {secParagraphs.map((p, pIdx) => (
+                      <div
+                        key={pIdx}
+                        className={`font-quote text-lg md:text-xl leading-[1.8] tracking-wide whitespace-pre-wrap italic opacity-95 text-left my-8 border-l-2 pl-6 py-2 relative ${
+                          isFocusMode
+                            ? 'text-[#e0b8b5] border-[#ff7261]/30'
+                            : 'text-[#501b17] border-[#ab3429]/30'
+                        }`}
+                      >
+                        <div
+                          className={`absolute -left-[5px] top-0 w-2 h-2 rounded-full ${
+                            isFocusMode ? 'bg-[#ff7261]/40' : 'bg-[#ab3429]/20'
+                          }`}
+                        />
+                        <div
+                          className={`absolute -left-[5px] bottom-0 w-2 h-2 rounded-full ${
+                            isFocusMode ? 'bg-[#ff7261]/40' : 'bg-[#ab3429]/20'
+                          }`}
+                        />
+                        {p.segments.map((seg, sIdx) => {
+                          if (seg.isMark) {
+                            const colorMap = {
+                              YELLOW: 'bg-yellow-200',
+                              GREEN: 'bg-green-200',
+                              BLUE: 'bg-blue-200',
+                              RED: 'bg-red-200',
+                            }
+                            return (
+                              <mark
+                                key={sIdx}
+                                data-offset={seg.globalOffset}
+                                className={`${colorMap[seg.note.color]} text-inherit bg-opacity-70 rounded-sm px-0.5 mx-px cursor-pointer hover:opacity-80 transition-opacity`}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  const rect = e.target.getBoundingClientRect()
+                                  setActiveNote({
+                                    note: seg.note,
+                                    rect: {
+                                      top: rect.top - 40,
+                                      left: rect.left + rect.width / 2,
+                                    },
+                                  })
+                                  setSelectionRect(null)
+                                }}
+                              >
+                                {renderTextWithHiddenTags(
+                                  seg.text,
+                                  seg.globalOffset,
+                                )}
+                              </mark>
+                            )
+                          }
+                          return (
+                            <span key={sIdx} data-offset={seg.globalOffset}>
+                              {renderTextWithHiddenTags(
+                                seg.text,
+                                seg.globalOffset,
+                              )}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    ))}
+                  </section>
                 )
-              }
-              return (
-                <span key={sIdx}>
-                  {renderTextWithHiddenTags(seg.text, seg.globalOffset)}
-                </span>
-              )
-            })
+              })}
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Tiêu đề */}
+            <div className="text-center mb-16 relative">
+              <div
+                className={`inline-block px-4 py-1.5 border rounded-full text-xs font-bold tracking-widest uppercase mb-6 shadow-sm ${
+                  isFocusMode
+                    ? 'bg-white/5 border-white/10 text-[#ff7261]'
+                    : 'bg-[#412311]/5 border-[#412311]/10 text-[#ab3429]'
+                }`}
+              >
+                Trích đoạn Tác phẩm
+              </div>
+              <h2
+                className={`font-title text-4xl md:text-[52px] font-extrabold leading-tight relative z-10 ${
+                  isFocusMode ? 'text-[#e8e6e3]' : 'text-[#412311]'
+                }`}
+              >
+                {currentSection?.title || `Chương ${currentSection?.number}`}
+              </h2>
 
-            if (isPoetry) {
-              return (
-                <div key={pIdx} className="flex justify-center my-8 w-full">
-                  <div
-                    className={`font-quote text-lg md:text-xl leading-[1.8] tracking-wide whitespace-pre-wrap italic opacity-95 text-left min-w-[200px] border-l-2 pl-6 py-2 relative ${
+              <div className="mt-10 mb-2 flex items-center justify-center gap-4 opacity-80">
+                <div
+                  className={`w-16 md:w-32 h-[1px] bg-gradient-to-r from-transparent ${isFocusMode ? 'to-[#ff7261]/60' : 'to-[#ab3429]/60'}`}
+                ></div>
+                <div
+                  className={`w-1.5 h-1.5 rotate-45 ${isFocusMode ? 'bg-[#ff7261]' : 'bg-[#ab3429]'}`}
+                ></div>
+                <div
+                  className={`w-16 md:w-32 h-[1px] bg-gradient-to-l from-transparent ${isFocusMode ? 'to-[#ff7261]/60' : 'to-[#ab3429]/60'}`}
+                ></div>
+              </div>
+            </div>
+
+            {/* Typography chuẩn mực: Phân loại Thơ và Văn xuôi */}
+            <div
+              className={`w-full ${
+                currentSection?.contentType !== 'POETRY'
+                  ? `prose prose-lg md:prose-xl text-lg md:text-xl max-w-none font-quote leading-[2.2] tracking-wide text-justify hyphens-auto first-letter:text-[72px] first-letter:font-title first-letter:font-black first-letter:mr-2 first-letter:float-left first-letter:mt-1 first-letter:leading-[0.85] ${
                       isFocusMode
-                        ? 'text-[#e0b8b5] border-[#ff7261]/30'
-                        : 'text-[#501b17] border-[#ab3429]/30'
-                    }`}
-                  >
-                    <div
-                      className={`absolute -left-[5px] top-0 w-2 h-2 rounded-full ${isFocusMode ? 'bg-[#ff7261]/40' : 'bg-[#ab3429]/20'}`}
-                    />
-                    <div
-                      className={`absolute -left-[5px] bottom-0 w-2 h-2 rounded-full ${isFocusMode ? 'bg-[#ff7261]/40' : 'bg-[#ab3429]/20'}`}
-                    />
-                    {renderSegments}
-                  </div>
-                </div>
-              )
-            } else {
-              return (
-                <p key={pIdx} className="mb-6">
-                  {renderSegments}
-                </p>
-              )
-            }
-          })}
-        </div>
+                        ? 'text-[#d4d4d4] first-letter:text-[#ff7261] first-letter:[text-shadow:2px_2px_4px_rgba(255,114,97,0.25)]'
+                        : 'text-[#231a0c] first-letter:text-[#ab3429] first-letter:[text-shadow:2px_2px_4px_rgba(171,52,41,0.25)]'
+                    }`
+                  : ''
+              }`}
+            >
+              {parsedParagraphs.map((p, pIdx) => {
+                const isPoetry =
+                  currentSection?.contentType === 'POETRY' ||
+                  (currentSection?.contentType === 'MIXED' && p.isPoetry)
+
+                const renderSegments = p.segments.map((seg, sIdx) => {
+                  if (seg.isMark) {
+                    const colorMap = {
+                      YELLOW: 'bg-yellow-200',
+                      GREEN: 'bg-green-200',
+                      BLUE: 'bg-blue-200',
+                      RED: 'bg-red-200',
+                    }
+                    return (
+                      <mark
+                        key={sIdx}
+                        data-offset={seg.globalOffset}
+                        className={`${colorMap[seg.note.color]} text-inherit bg-opacity-70 rounded-sm px-0.5 mx-px cursor-pointer hover:opacity-80 transition-opacity`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          const rect = e.target.getBoundingClientRect()
+                          setActiveNote({
+                            note: seg.note,
+                            rect: {
+                              top: rect.top - 40,
+                              left: rect.left + rect.width / 2,
+                            },
+                          })
+                          setSelectionRect(null)
+                        }}
+                      >
+                        {renderTextWithHiddenTags(seg.text, seg.globalOffset)}
+                      </mark>
+                    )
+                  }
+                  return (
+                    <span key={sIdx}>
+                      {renderTextWithHiddenTags(seg.text, seg.globalOffset)}
+                    </span>
+                  )
+                })
+
+                if (isPoetry) {
+                  return (
+                    <div key={pIdx} className="w-fit mx-auto px-4 my-8">
+                      <div
+                        className={`font-quote text-lg md:text-xl leading-[1.8] tracking-wide whitespace-pre-wrap italic opacity-95 text-left border-l-2 pl-6 py-2 relative ${
+                          isFocusMode
+                            ? 'text-[#e0b8b5] border-[#ff7261]/30'
+                            : 'text-[#501b17] border-[#ab3429]/30'
+                        }`}
+                      >
+                        <div
+                          className={`absolute -left-[5px] top-0 w-2 h-2 rounded-full ${isFocusMode ? 'bg-[#ff7261]/40' : 'bg-[#ab3429]/20'}`}
+                        />
+                        <div
+                          className={`absolute -left-[5px] bottom-0 w-2 h-2 rounded-full ${isFocusMode ? 'bg-[#ff7261]/40' : 'bg-[#ab3429]/20'}`}
+                        />
+                        {renderSegments}
+                      </div>
+                    </div>
+                  )
+                } else {
+                  return (
+                    <p key={pIdx} className="mb-6">
+                      {renderSegments}
+                    </p>
+                  )
+                }
+              })}
+            </div>
+          </>
+        )}
 
         {/* Nút Điều hướng Cuối bài (Ẩn nếu là Thơ 1 trang) */}
-        {!(totalSections === 1 && currentSection?.contentType === 'POETRY') && (
+        {isCompleted || isPurePoetry || !nextSection ? (
+          <div
+            className={`mt-24 pt-10 border-t flex flex-col items-center justify-center p-8 rounded-3xl border shadow-sm gap-4 ${
+              isFocusMode
+                ? 'bg-white/5 border-white/10'
+                : 'bg-white/40 border-[#83746d]/10'
+            }`}
+          >
+            <span
+              className={`font-bold italic ${
+                isFocusMode ? 'text-white/40' : 'text-[#50443e]/40'
+              }`}
+            >
+              Đã đọc hết tác phẩm
+            </span>
+            {!isCompleted ? (
+              <button
+                onClick={() => {
+                  setIsCompleted(true)
+                  const lastSecId =
+                    sectionsToRender?.[sectionsToRender.length - 1]?.id ||
+                    currentSection?.id
+                  if (lastSecId) {
+                    upsertBookmark({
+                      workId: work.id,
+                      data: {
+                        currentSectionId: lastSecId,
+                        position: 0,
+                        progressPercent: 100,
+                        isCompleted: true,
+                      },
+                    })
+                  }
+                }}
+                className="px-6 py-2.5 bg-green-600 text-white rounded-full font-bold shadow hover:bg-green-500 transition"
+              >
+                Đánh dấu hoàn thành
+              </button>
+            ) : (
+              <span
+                className={`font-bold px-6 py-2.5 rounded-full ${
+                  isFocusMode
+                    ? 'text-green-400 bg-green-900/30'
+                    : 'text-green-600 bg-green-50'
+                }`}
+              >
+                ✓ Đã hoàn thành
+              </span>
+            )}
+          </div>
+        ) : (
           <div
             className={`mt-28 pt-10 border-t flex flex-col sm:flex-row items-stretch justify-between gap-6 ${isFocusMode ? 'border-white/10' : 'border-[#83746d]/20'}`}
           >
