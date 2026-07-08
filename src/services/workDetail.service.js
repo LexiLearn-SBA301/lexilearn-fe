@@ -13,6 +13,11 @@ export const fetchWorkSectionDetail = async (workId, sectionId) => {
   return response.data.result
 }
 
+export const fetchWorkSectionsFull = async (workId) => {
+  const response = await apiClient.get(`/v1/works/${workId}/sections/full`)
+  return response.data.result
+}
+
 // -- WORK DETAILS (CHARACTERS) --
 export const fetchWorkCharacters = async (workId) => {
   const response = await apiClient.get(`/v1/works/${workId}/characters`)
