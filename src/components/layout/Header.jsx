@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react' // Bổ sung useState và useEffect
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Search, Menu, User, LogOut } from 'lucide-react'
+import { Search, Menu, User, LogOut, Star } from 'lucide-react'
 import { useAuthStore } from '../../features/auth/store/auth.store'
 import { useChatStore } from '../../features/library/store/chat.store'
 
@@ -90,6 +90,12 @@ export const Header = () => {
             >
               Thẻ
             </Link>
+            <Link
+              to="/admin/duyet-review"
+              className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${location.pathname.includes('/admin/duyet-review') ? 'bg-[#ab3429] text-white shadow-sm' : 'text-on-surface-variant hover:text-primary'}`}
+            >
+              Đánh giá
+            </Link>
           </nav>
         ) : (
           /* 2. NẾU LÀ USER THÌ HIỆN NAV CŨ */
@@ -136,7 +142,15 @@ export const Header = () => {
                 <User size={20} strokeWidth={2} />
               </button>
               {isMenuOpen && (
-                <div className="absolute right-0 mt-2 w-44 bg-[#fff9ef] rounded-2xl shadow-xl border border-outline-variant/10 py-2 overflow-hidden">
+                <div className="absolute right-0 mt-2 w-52 bg-[#fff9ef] rounded-2xl shadow-xl border border-outline-variant/10 py-2 overflow-hidden">
+                  <Link
+                    to="/ca-nhan/reviews"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center gap-2 w-full px-4 py-2.5 text-left text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors font-semibold text-[15px]"
+                  >
+                    <Star size={18} strokeWidth={2} />
+                    Đánh giá của tôi
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-2 w-full px-4 py-2.5 text-left text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors font-semibold text-[15px]"

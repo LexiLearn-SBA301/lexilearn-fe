@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   fetchWorkSections,
   fetchWorkSectionDetail,
+  fetchWorkSectionsFull,
   fetchWorkCharacters,
   fetchArtisticFeatures,
   createWorkSection,
@@ -29,11 +30,20 @@ export const useGetSections = (workId) => {
 }
 
 // Hook lấy chi tiết text để đọc (Main Content)
-export const useGetSectionDetail = (workId, sectionId) => {
+export const useGetSectionDetail = (workId, sectionId, enabled = true) => {
   return useQuery({
     queryKey: ['section', workId, sectionId],
     queryFn: () => fetchWorkSectionDetail(workId, sectionId),
-    enabled: !!workId && !!sectionId, // Chỉ chạy khi có đủ ID
+    enabled: !!workId && !!sectionId && enabled, // Chỉ chạy khi có đủ ID và enabled
+  })
+}
+
+// Hook lấy toàn bộ nội dung các mục lục (Dành cho tác phẩm thơ thuần)
+export const useGetFullSections = (workId, enabled = true) => {
+  return useQuery({
+    queryKey: ['sections-full', workId],
+    queryFn: () => fetchWorkSectionsFull(workId),
+    enabled: !!workId && enabled,
   })
 }
 
@@ -68,6 +78,9 @@ export const useCreateWorkSection = () => {
       queryClient.invalidateQueries({
         queryKey: ['sections', variables.workId],
       })
+      queryClient.invalidateQueries({
+        queryKey: ['sections-full', variables.workId],
+      })
     },
   })
 }
@@ -78,6 +91,7 @@ export const useUpdateWorkSection = () => {
     mutationFn: updateWorkSection,
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['sections'] })
+      queryClient.invalidateQueries({ queryKey: ['sections-full'] })
       queryClient.invalidateQueries({
         queryKey: ['section', variables.sectionId],
       })
@@ -91,6 +105,7 @@ export const useDeleteWorkSection = () => {
     mutationFn: deleteWorkSection,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sections'] })
+      queryClient.invalidateQueries({ queryKey: ['sections-full'] })
     },
   })
 }

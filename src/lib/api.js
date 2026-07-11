@@ -46,14 +46,37 @@ const processQueue = (error, token = null) => {
   pendingQueue = []
 }
 
+// Các endpoint auth công khai: 401 ở đây nghĩa là "sai email/mật khẩu" (INVALID_CREDENTIALS),
+// KHÔNG phải access token hết hạn — không được để interceptor refresh-token xử lý,
+// nếu không message lỗi thật (vd "Email hoặc mật khẩu không đúng") sẽ bị nuốt mất và
+// thay bằng redirect về /dang-nhap (xóa luôn banner lỗi vừa hiện).
+const PUBLIC_AUTH_PATHS = [
+  '/v1/auth/login',
+  '/v1/auth/register',
+  '/v1/auth/verify-otp',
+  '/v1/auth/resend-otp',
+  '/v1/auth/forgot-password',
+  '/v1/auth/reset-password',
+  '/v1/auth/refresh',
+]
+
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalConfig = error.config
+    const isPublicAuthRequest = PUBLIC_AUTH_PATHS.some((path) =>
+      originalConfig?.url?.includes(path),
+    )
 
-    // Bỏ qua nếu không phải 401, hoặc request này đã thử retry một lần rồi
-    // (cờ _retry ngăn vòng lặp vô hạn cho chính request bị 401)
-    if (error.response?.status !== 401 || originalConfig._retry) {
+    // Bỏ qua nếu không phải 401, nếu request này đã thử retry một lần rồi
+    // (cờ _retry ngăn vòng lặp vô hạn cho chính request bị 401), hoặc nếu 401 này
+    // đến từ chính các endpoint auth công khai (login/register/...) — 401 ở đó là lỗi
+    // nghiệp vụ bình thường (sai mật khẩu, sai OTP...), không liên quan access token.
+    if (
+      error.response?.status !== 401 ||
+      originalConfig._retry ||
+      isPublicAuthRequest
+    ) {
       return Promise.reject(error)
     }
 
