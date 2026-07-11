@@ -3,14 +3,26 @@ import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { fetchWorks } from '../services/library.service'
 import { useChatStore } from '../features/library/store/chat.store'
-import { Search, BookOpen, Sparkles, Loader2 } from 'lucide-react' // Đã bỏ Mic
-
+import { Search, BookOpen, Sparkles, Loader2 } from 'lucide-react'
+import banner1 from '../assets/banners/banner1.png'
+import banner2 from '../assets/banners/banner2.png'
+import banner3 from '../assets/banners/banner3.png'
+const BANNER_IMAGES = [banner1, banner2, banner3]
 export const HomePage = () => {
   const [search, setSearch] = useState('')
   const [results, setResults] = useState([])
   const [isSearching, setIsSearching] = useState(false)
   const navigate = useNavigate()
   const openChat = useChatStore((state) => state.openChat)
+
+  // STATE ĐỂ QUẢN LÝ ẢNH ĐANG HIỂN THỊ
+  const [currentImage, setCurrentImage] = useState(0)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentImage((prev) => (prev + 1) % BANNER_IMAGES.length)
+    }, 3000)
+    return () => clearInterval(timer) // Cleanup khi unmount
+  }, [])
 
   const { data: featuredWorks, isLoading: isFeaturedLoading } = useQuery({
     queryKey: ['featured-works'],
@@ -79,8 +91,37 @@ export const HomePage = () => {
         </div>
 
         <div className="hidden md:flex flex-1 justify-center self-start">
-          <div className="w-full max-w-[34rem] h-[clamp(420px,40vw,480px)] bg-surface-container-high rounded-[40px] flex items-center justify-center shadow-2xl border border-white/50 overflow-hidden">
-            {/* Bạn thay ảnh phù hợp ở đây */}
+          {/* KHUNG CHỨA BANNER */}
+          <div className="w-full max-w-[34rem] h-[clamp(420px,40vw,480px)] bg-surface-container-high rounded-[40px] flex items-center justify-center shadow-2xl border border-white/50 overflow-hidden relative">
+            {/* MAP QUA MẢNG ẢNH ĐỂ TẠO HIỆU ỨNG TRỒI/LẶN */}
+            {BANNER_IMAGES.map((img, index) => (
+              <img
+                key={index}
+                src={img}
+                alt={`Banner ${index + 1}`}
+                // Dùng duration-1000 (1 giây) để đổi ảnh từ từ
+                className={`absolute inset-0 w-full h-full object-cover transition-all duration-500 ease-in-out ${
+                  index === currentImage
+                    ? 'opacity-100 scale-100 z-10' // Đang chọn: Trồi lên (Rõ 100%, kích thước chuẩn 100%)
+                    : 'opacity-0 scale-90 z-0' // Không chọn: Lặn xuống (Mờ 0%, thu nhỏ lại 90% chìm vào trong)
+                }`}
+              />
+            ))}
+
+            {/* CÁC CHẤM CHUYỂN ẢNH (DOTS) */}
+            <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2 z-20">
+              {BANNER_IMAGES.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentImage(index)}
+                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                    index === currentImage
+                      ? 'bg-white w-8' // Nút đang chọn dài ra
+                      : 'bg-white/50 hover:bg-white/80'
+                  }`}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </main>
@@ -92,7 +133,6 @@ export const HomePage = () => {
             value={search}
             onChange={handleSearchChange}
             placeholder="Tìm kiếm tác phẩm..."
-            // Chỉnh pr-14 cho cân đối
             className="w-full bg-white border border-outline-variant/30 text-primary rounded-2xl py-[clamp(1rem,2vw,2rem)] pl-[clamp(2.75rem,4vw,4.75rem)] pr-[clamp(2.75rem,4vw,4.75rem)] text-[clamp(0.9375rem,0.5vw+0.75rem,1.5rem)] shadow-lg focus:outline-none focus:ring-2 focus:ring-secondary/50 transition-all"
           />
           <Search

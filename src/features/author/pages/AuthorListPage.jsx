@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useAuthors } from '../hooks/useAuthor'
 import { AuthorCard } from '../components/AuthorCard'
 import { Loader2, Search } from 'lucide-react'
@@ -6,54 +6,43 @@ import { Loader2, Search } from 'lucide-react'
 export const AuthorListPage = () => {
   const [searchQuery, setSearchQuery] = useState('')
 
+  // TRẢ VALUE VỀ KHỚP VỚI DATABASE
   const PERIOD_OPTIONS = [
     { label: 'Văn học dân gian', value: 'dan_gian' },
     { label: 'Văn học trung đại', value: 'trung_dai' },
     { label: 'Văn học hiện đại', value: 'hien_dai' },
   ]
 
-  const [selectedPeriods, setSelectedPeriods] = useState([])
-  const [appliedFilters, setAppliedFilters] = useState({
-    periods: [],
-  })
+  // ĐỔI STATE TỪ MẢNG SANG CHUỖI ĐỂ TRUYỀN LÊN API
+  const [selectedPeriod, setSelectedPeriod] = useState('')
+  const [appliedPeriod, setAppliedPeriod] = useState('')
 
-  // --- STATE QUẢN LÝ TRANG (FRONTEND) ---
   const [currentPage, setCurrentPage] = useState(0)
-  const ITEMS_PER_PAGE = 12 // Số lượng tác giả 1 trang
+  const ITEMS_PER_PAGE = 4
+
   const { data: authorsPage, isLoading } = useAuthors({
-    search: searchQuery || undefined,
-    size: 1000,
+    search: searchQuery,
+    period: appliedPeriod || undefined,
+    page: currentPage,
+    size: ITEMS_PER_PAGE,
+    sort: 'name,asc',
   })
 
-  // --- 1. LỌC DATA (FRONTEND FILTER) ---
-  const filteredAuthors = useMemo(() => {
-    if (!authorsPage?.content) return []
+  const displayedAuthors = authorsPage?.content || []
+  const totalPages = authorsPage?.totalPages || 0
 
-    return authorsPage.content.filter((author) => {
-      const matchPeriod =
-        appliedFilters.periods.length === 0 ||
-        appliedFilters.periods.includes(author.period)
+  const toggleSelection = (value) => {
+    setSelectedPeriod((prev) => (prev === value ? '' : value))
+  }
 
-      return matchPeriod
-    })
-  }, [authorsPage, appliedFilters])
+  const handleApplyFilter = () => {
+    setAppliedPeriod(selectedPeriod)
+    setCurrentPage(0)
+  }
 
-  // --- 2. CẮT DATA THEO TRANG (FRONTEND PAGINATION) ---
-  const totalPages = Math.ceil(filteredAuthors.length / ITEMS_PER_PAGE)
-  const displayedAuthors = filteredAuthors.slice(
-    currentPage * ITEMS_PER_PAGE,
-    (currentPage + 1) * ITEMS_PER_PAGE,
-  )
-
-  // Hàm toggle checkbox
-  const toggleSelection = (value, type) => {
-    if (type === 'period') {
-      setSelectedPeriods((prev) =>
-        prev.includes(value)
-          ? prev.filter((i) => i !== value)
-          : [...prev, value],
-      )
-    }
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value)
+    setCurrentPage(0)
   }
 
   return (
@@ -75,9 +64,9 @@ export const AuthorListPage = () => {
             </div>
             <input
               type="text"
-              placeholder="Tìm kiếm tác giả..."
+              placeholder="Tìm kiếm tên tác giả..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
               className="w-full bg-white border border-outline-variant/40 text-primary rounded-2xl py-4 pl-12 pr-4 shadow-sm focus:outline-none focus:ring-2 focus:ring-tertiary-container transition-all"
             />
           </div>
@@ -89,12 +78,8 @@ export const AuthorListPage = () => {
               <h2 className="font-title text-2xl font-bold text-primary mb-1">
                 Bộ lọc
               </h2>
-              <p className="text-xs text-on-surface-variant mb-6">
-                Khám phá theo chuyên mục
-              </p>
 
-              {/* FILTER THỜI KỲ */}
-              <div className="mb-6">
+              <div className="mt-6 mb-6">
                 <h3 className="text-sm font-bold text-primary mb-3 uppercase tracking-wider">
                   Thời kỳ
                 </h3>
@@ -106,9 +91,9 @@ export const AuthorListPage = () => {
                     >
                       <input
                         type="checkbox"
-                        checked={selectedPeriods.includes(p.value)}
-                        onChange={() => toggleSelection(p.value, 'period')}
-                        className="w-4 h-4 rounded border-outline-variant text-[#ab3429] focus:ring-[#ab3429] bg-transparent"
+                        checked={selectedPeriod === p.value}
+                        onChange={() => toggleSelection(p.value)}
+                        className="w-4 h-4 rounded border-outline-variant text-[#ab3429] focus:ring-[#ab3429] bg-transparent cursor-pointer"
                       />
                       <span className="text-sm font-medium group-hover:text-primary">
                         {p.label}
@@ -118,9 +103,8 @@ export const AuthorListPage = () => {
                 </div>
               </div>
 
-              {/* NÚT ÁP DỤNG BỘ LỌC */}
               <button
-                onClick={() => setAppliedFilters({ periods: selectedPeriods })}
+                onClick={handleApplyFilter}
                 className="w-full bg-[#ab3429] text-white py-3 rounded-xl font-bold hover:bg-[#8a1c14] transition-colors text-sm shadow-md mt-4"
               >
                 Áp dụng bộ lọc
@@ -141,14 +125,12 @@ export const AuthorListPage = () => {
               </div>
             ) : (
               <>
-                {/* LƯỚI TÁC GIẢ (Sử dụng displayedAuthors đã được cắt theo trang) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
                   {displayedAuthors.map((author) => (
                     <AuthorCard key={author.id} author={author} />
                   ))}
                 </div>
 
-                {/* UI PHÂN TRANG (Sử dụng totalPages tự tính bằng JS) */}
                 {totalPages > 1 && (
                   <div className="mt-auto pt-12">
                     <div className="flex justify-center items-center gap-6 mb-4 border-t border-outline-variant/30 pt-8">
@@ -158,7 +140,7 @@ export const AuthorListPage = () => {
                           window.scrollTo({ top: 0, behavior: 'smooth' })
                         }}
                         disabled={currentPage === 0}
-                        className="px-6 py-2.5 rounded-xl font-bold border border-[#ab3429]/20 text-[#ab3429] hover:bg-[#ab3429]/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                        className="px-6 py-2.5 rounded-xl font-bold border border-[#ab3429]/20 text-[#ab3429] hover:bg-[#ab3429]/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer"
                       >
                         &larr; Trang trước
                       </button>
@@ -176,8 +158,8 @@ export const AuthorListPage = () => {
                           setCurrentPage((prev) => prev + 1)
                           window.scrollTo({ top: 0, behavior: 'smooth' })
                         }}
-                        disabled={currentPage === totalPages - 1}
-                        className="px-6 py-2.5 rounded-xl font-bold border border-[#ab3429]/20 text-[#ab3429] hover:bg-[#ab3429]/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                        disabled={currentPage >= totalPages - 1}
+                        className="px-6 py-2.5 rounded-xl font-bold border border-[#ab3429]/20 text-[#ab3429] hover:bg-[#ab3429]/10 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-2 cursor-pointer"
                       >
                         Trang sau &rarr;
                       </button>

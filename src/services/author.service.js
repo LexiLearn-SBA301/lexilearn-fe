@@ -1,7 +1,14 @@
 import { apiClient } from '../lib/api'
 
 export const fetchAuthors = async (params) => {
-  const response = await apiClient.get('/v1/authors', { params })
+  const cleanParams = { ...params }
+  Object.keys(cleanParams).forEach((key) => {
+    if (cleanParams[key] === undefined || cleanParams[key] === '') {
+      delete cleanParams[key]
+    }
+  })
+
+  const response = await apiClient.get('/v1/authors', { params: cleanParams })
   return response.data.result
 }
 
