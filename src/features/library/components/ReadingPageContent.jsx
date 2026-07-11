@@ -172,7 +172,7 @@ export const ReadingPageContent = ({
   const user = useAuthStore((s) => s.user)
   const [localNotes, setLocalNotes] = useState(sessionGuestNotes)
 
-  const { data: serverNotes } = useGetSectionNotes(currentSection?.id)
+  const { data: serverNotes } = useGetSectionNotes(currentSection?.pIdx)
   const notes = [
     ...(serverNotes || []),
     ...localNotes.filter((n) => n.sectionId === currentSection?.id),
