@@ -22,7 +22,7 @@ import {
   getEventUi,
   isHiddenThinkingEvent,
   formatRichText,
-} from '../api/chat.api'
+} from '../../../services/chat.service'
 
 // ============================================================================
 // 🎛️  CHỈNH NHANH LỚP PHỦ (sửa trực tiếp 2 dòng dưới đây)
