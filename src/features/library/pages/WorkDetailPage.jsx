@@ -96,8 +96,6 @@ export const WorkDetailPage = () => {
               {work.authorSlug ? (
                 <Link
                   to={`/tac-gia/${work.authorSlug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   className="hover:text-primary hover:underline underline-offset-4 transition-colors cursor-pointer"
                 >
                   {work.authorName}

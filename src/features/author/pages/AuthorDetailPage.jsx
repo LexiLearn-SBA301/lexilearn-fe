@@ -1,10 +1,11 @@
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthorDetail } from '../hooks/useAuthor'
 import { Loader2, ArrowLeft, User, BookMarked, PenTool } from 'lucide-react'
 
 export const AuthorDetailPage = () => {
   const { slug } = useParams()
   const { data: author, isLoading } = useAuthorDetail(slug)
+  const navigate = useNavigate()
 
   if (isLoading) {
     return (
@@ -26,13 +27,14 @@ export const AuthorDetailPage = () => {
     <div className="bg-background min-h-screen font-body relative pb-16">
       {/* Nút Back */}
       <div className="max-w-5xl mx-auto px-6 pt-8 relative z-20">
-        <Link
-          to="/tac-gia"
-          className="inline-flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-medium"
+        {/* ĐỔI THẺ Link THÀNH button */}
+        <button
+          onClick={() => navigate(-1)} // GỌI LỆNH LÙI LẠI TRANG TRƯỚC
+          className="inline-flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors font-medium cursor-pointer"
         >
           <ArrowLeft size={20} />
-          Trở về Danh sách Tác giả
-        </Link>
+          Trở lại {/* Sửa text cho tổng quát */}
+        </button>
       </div>
 
       <main className="max-w-5xl mx-auto px-6 py-8 relative z-10">
