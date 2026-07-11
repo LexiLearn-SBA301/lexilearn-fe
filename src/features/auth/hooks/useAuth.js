@@ -8,7 +8,7 @@ import {
   forgotPasswordApi,
   resetPasswordApi,
   getMeApi,
-} from '../api/auth.api'
+} from '../../../services/auth.service'
 import { useAuthStore } from '../store/auth.store'
 import { resolveHomeRoute } from '../utils/resolveHomeRoute'
 

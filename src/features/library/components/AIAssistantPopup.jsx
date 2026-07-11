@@ -17,7 +17,7 @@ import {
   formatRichText,
   CHAT_MODELS,
   DEFAULT_CHAT_MODEL,
-} from '../api/chat.api'
+} from '../../../services/chat.service'
 import { ThinkingSummaryChip } from './ThinkingSummaryChip'
 import { ThinkingProcessPanel } from './ThinkingProcessPanel'
 import chatbotInsideIcon from '../../../assets/images/chatbot-inside-icon.png'

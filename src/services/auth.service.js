@@ -1,4 +1,4 @@
-import { apiClient } from '../../../lib/api'
+import { apiClient } from '../lib/api'
 
 // Gọi API đăng nhập, trả về TokenResponse (accessToken, refreshToken, tokenType, expiresIn)
 // BE: POST /v1/auth/login → ApiResponse<TokenResponse>
