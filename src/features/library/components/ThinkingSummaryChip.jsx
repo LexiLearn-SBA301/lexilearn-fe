@@ -39,7 +39,9 @@ export const ThinkingSummaryChip = ({
           {streaming ? 'Mộc Bản đang suy nghĩ…' : 'Quá trình suy nghĩ'}
         </span>
         <span className="block text-[11px] text-[#83746d] mt-0.5">
-          {steps} bước · bấm để xem hội đồng tranh luận
+          {steps
+            ? `${steps} bước · bấm để xem hội đồng tranh luận`
+            : 'Đang triệu tập hội đồng tranh luận…'}
         </span>
       </span>
       <ChevronRight

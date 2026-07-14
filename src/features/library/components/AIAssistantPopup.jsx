@@ -31,6 +31,16 @@ const isEssayStart = (ev) =>
   ev?.node === 'write_essay' &&
   /đang viết/i.test(ev.content || '')
 
+// Ba chấm nhảy — báo hiệu AI đang xử lý. Dùng cho cả model blocking (chờ trả lời) lẫn
+// model streaming trong khoảng chờ event SSE ĐẦU TIÊN (lúc này chưa có timeline để hiện).
+const TypingDots = () => (
+  <div className="w-fit bg-white border border-[#83746d]/15 shadow-sm rounded-3xl rounded-tl-sm px-5 py-4 flex items-center gap-2">
+    <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce"></div>
+    <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce [animation-delay:0.2s]"></div>
+    <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce [animation-delay:0.4s]"></div>
+  </div>
+)
+
 // Cập nhật bong bóng assistant cuối cùng trong mảng messages (dùng khi stream đổ event dần).
 const updateLastAssistant = (messages, fn) => {
   const idx = messages.map((m) => m.role).lastIndexOf('assistant')
@@ -498,7 +508,13 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
         <div className="relative flex-1 overflow-y-auto p-5 custom-scrollbar flex flex-col gap-6 z-10">
           {messages.map((msg, index) => {
             const isUser = msg.role === 'user'
-            const hasEvents = !isUser && msg.events?.length > 0
+            // Hiện chip ngay từ lúc bắt đầu stream (dù chưa có event nào) -> người dùng
+            // thấy "Mộc Bản đang suy nghĩ…" thay vì avatar trơ trọi trong lúc chờ SSE.
+            const hasEvents =
+              !isUser && (msg.events?.length > 0 || msg.streaming)
+            // Chưa có chữ nào để hiện -> gõ ba chấm cho biết AI vẫn đang chạy.
+            const isPending =
+              !isUser && msg.streaming && !msg.content && !msg.error
             return (
               <div
                 key={index}
@@ -543,6 +559,8 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
                     </div>
                   )}
 
+                  {isPending && <TypingDots />}
+
                   {msg.content && (
                     <div
                       className={`w-fit max-w-full rounded-3xl p-4 md:p-5 text-[14.5px] leading-[1.85] break-words relative ${
@@ -571,11 +589,7 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
                 alt="Mộc Bản AI"
                 className="w-9 h-9 rounded-xl object-contain flex-shrink-0 mt-1 drop-shadow-[0_3px_8px_rgba(65,35,17,0.18)]"
               />
-              <div className="bg-white border border-[#83746d]/15 shadow-sm rounded-3xl rounded-tl-sm px-5 py-4 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce"></div>
-                <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce [animation-delay:0.2s]"></div>
-                <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce [animation-delay:0.4s]"></div>
-              </div>
+              <TypingDots />
             </div>
           )}
           <div ref={messagesEndRef} />
