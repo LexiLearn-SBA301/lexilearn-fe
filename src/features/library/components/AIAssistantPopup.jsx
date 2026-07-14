@@ -10,6 +10,7 @@ import {
   Cpu,
   ChevronDown,
   Check,
+  Square,
 } from 'lucide-react'
 import {
   sendChatMessage,
@@ -29,6 +30,16 @@ const isEssayStart = (ev) =>
   ev?.type === 'status' &&
   ev?.node === 'write_essay' &&
   /đang viết/i.test(ev.content || '')
+
+// Ba chấm nhảy — báo hiệu AI đang xử lý. Dùng cho cả model blocking (chờ trả lời) lẫn
+// model streaming trong khoảng chờ event SSE ĐẦU TIÊN (lúc này chưa có timeline để hiện).
+const TypingDots = () => (
+  <div className="w-fit bg-white border border-[#83746d]/15 shadow-sm rounded-3xl rounded-tl-sm px-5 py-4 flex items-center gap-2">
+    <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce"></div>
+    <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce [animation-delay:0.2s]"></div>
+    <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce [animation-delay:0.4s]"></div>
+  </div>
+)
 
 // Cập nhật bong bóng assistant cuối cùng trong mảng messages (dùng khi stream đổ event dần).
 const updateLastAssistant = (messages, fn) => {
@@ -220,7 +231,19 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
         },
       })
     } catch (e) {
-      if (e?.name === 'AbortError') return // người dùng chủ động hủy
+      // Người dùng chủ động hủy (bấm Dừng / đóng popup): tắt bộ gõ bản thảo và chốt
+      // bong bóng lại — nếu chưa kịp có câu trả lời thì ghi rõ là đã dừng.
+      if (e?.name === 'AbortError') {
+        stopDraft()
+        setMessages((prev) =>
+          updateLastAssistant(prev, (m) => ({
+            ...m,
+            streaming: false,
+            content: m.content || 'Đã dừng theo yêu cầu của bạn.',
+          })),
+        )
+        return
+      }
       const detail = e?.message || 'Lỗi không xác định'
       setMessages((prev) =>
         updateLastAssistant(prev, (m) => ({
@@ -323,6 +346,13 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     onClose()
   }
 
+  // Dừng lượt streaming đang chạy: abort fetch -> backend cancel luôn workflow deep
+  // (LangGraph hủy node đang chạy, request tới Ollama bị hủy theo).
+  const handleStop = () => {
+    abortRef.current?.abort()
+    abortRef.current = null
+  }
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -331,6 +361,10 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   }
 
   if (!isOpen) return null
+
+  // Chỉ model streaming mới hủy được giữa chừng (2 model blocking không có kết nối để đóng).
+  const canStop =
+    isTyping && !!CHAT_MODELS.find((m) => m.id === selectedModel)?.streaming
 
   const thinkingMsg = thinkingIndex != null ? messages[thinkingIndex] : null
 
@@ -474,7 +508,13 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
         <div className="relative flex-1 overflow-y-auto p-5 custom-scrollbar flex flex-col gap-6 z-10">
           {messages.map((msg, index) => {
             const isUser = msg.role === 'user'
-            const hasEvents = !isUser && msg.events?.length > 0
+            // Hiện chip ngay từ lúc bắt đầu stream (dù chưa có event nào) -> người dùng
+            // thấy "Mộc Bản đang suy nghĩ…" thay vì avatar trơ trọi trong lúc chờ SSE.
+            const hasEvents =
+              !isUser && (msg.events?.length > 0 || msg.streaming)
+            // Chưa có chữ nào để hiện -> gõ ba chấm cho biết AI vẫn đang chạy.
+            const isPending =
+              !isUser && msg.streaming && !msg.content && !msg.error
             return (
               <div
                 key={index}
@@ -519,6 +559,8 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
                     </div>
                   )}
 
+                  {isPending && <TypingDots />}
+
                   {msg.content && (
                     <div
                       className={`w-fit max-w-full rounded-3xl p-4 md:p-5 text-[14.5px] leading-[1.85] break-words relative ${
@@ -547,11 +589,7 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
                 alt="Mộc Bản AI"
                 className="w-9 h-9 rounded-xl object-contain flex-shrink-0 mt-1 drop-shadow-[0_3px_8px_rgba(65,35,17,0.18)]"
               />
-              <div className="bg-white border border-[#83746d]/15 shadow-sm rounded-3xl rounded-tl-sm px-5 py-4 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce"></div>
-                <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce [animation-delay:0.2s]"></div>
-                <div className="w-2 h-2 rounded-full bg-[#ab3429]/60 animate-bounce [animation-delay:0.4s]"></div>
-              </div>
+              <TypingDots />
             </div>
           )}
           <div ref={messagesEndRef} />
@@ -582,11 +620,14 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
               rows={1}
             />
             <button
-              onClick={handleSend}
-              disabled={!input.trim() || isTyping}
+              onClick={canStop ? handleStop : handleSend}
+              disabled={canStop ? false : !input.trim() || isTyping}
+              title={canStop ? 'Dừng' : 'Gửi'}
               className="w-12 h-12 rounded-xl bg-[#ab3429] text-white flex items-center justify-center hover:bg-[#8a1c14] hover:shadow-[0_4px_15px_rgba(171,52,41,0.3)] hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-300 disabled:opacity-40 disabled:hover:shadow-none disabled:hover:translate-y-0 disabled:active:scale-100 mb-0.5 mr-0.5 flex-shrink-0"
             >
-              {isTyping ? (
+              {canStop ? (
+                <Square size={16} fill="currentColor" />
+              ) : isTyping ? (
                 <Loader2 size={20} className="animate-spin" />
               ) : (
                 <Send size={18} className="-ml-1" />
