@@ -10,6 +10,7 @@ import {
   Cpu,
   ChevronDown,
   Check,
+  Square,
 } from 'lucide-react'
 import {
   sendChatMessage,
@@ -220,7 +221,19 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
         },
       })
     } catch (e) {
-      if (e?.name === 'AbortError') return // người dùng chủ động hủy
+      // Người dùng chủ động hủy (bấm Dừng / đóng popup): tắt bộ gõ bản thảo và chốt
+      // bong bóng lại — nếu chưa kịp có câu trả lời thì ghi rõ là đã dừng.
+      if (e?.name === 'AbortError') {
+        stopDraft()
+        setMessages((prev) =>
+          updateLastAssistant(prev, (m) => ({
+            ...m,
+            streaming: false,
+            content: m.content || 'Đã dừng theo yêu cầu của bạn.',
+          })),
+        )
+        return
+      }
       const detail = e?.message || 'Lỗi không xác định'
       setMessages((prev) =>
         updateLastAssistant(prev, (m) => ({
@@ -323,6 +336,13 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     onClose()
   }
 
+  // Dừng lượt streaming đang chạy: abort fetch -> backend cancel luôn workflow deep
+  // (LangGraph hủy node đang chạy, request tới Ollama bị hủy theo).
+  const handleStop = () => {
+    abortRef.current?.abort()
+    abortRef.current = null
+  }
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -331,6 +351,10 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   }
 
   if (!isOpen) return null
+
+  // Chỉ model streaming mới hủy được giữa chừng (2 model blocking không có kết nối để đóng).
+  const canStop =
+    isTyping && !!CHAT_MODELS.find((m) => m.id === selectedModel)?.streaming
 
   const thinkingMsg = thinkingIndex != null ? messages[thinkingIndex] : null
 
@@ -582,11 +606,14 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
               rows={1}
             />
             <button
-              onClick={handleSend}
-              disabled={!input.trim() || isTyping}
+              onClick={canStop ? handleStop : handleSend}
+              disabled={canStop ? false : !input.trim() || isTyping}
+              title={canStop ? 'Dừng' : 'Gửi'}
               className="w-12 h-12 rounded-xl bg-[#ab3429] text-white flex items-center justify-center hover:bg-[#8a1c14] hover:shadow-[0_4px_15px_rgba(171,52,41,0.3)] hover:-translate-y-0.5 active:translate-y-0 active:scale-95 transition-all duration-300 disabled:opacity-40 disabled:hover:shadow-none disabled:hover:translate-y-0 disabled:active:scale-100 mb-0.5 mr-0.5 flex-shrink-0"
             >
-              {isTyping ? (
+              {canStop ? (
+                <Square size={16} fill="currentColor" />
+              ) : isTyping ? (
                 <Loader2 size={20} className="animate-spin" />
               ) : (
                 <Send size={18} className="-ml-1" />
