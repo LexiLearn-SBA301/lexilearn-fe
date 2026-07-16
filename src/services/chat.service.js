@@ -1,10 +1,28 @@
 import axios from 'axios'
+import { apiClient } from '../lib/api'
 
-// Chatbot AI (Python) chạy ở host riêng, KHÁC với Spring backend (localhost:8080),
-// và không cần auth token -> dùng axios instance riêng thay vì apiClient chung.
-// Có thể override host qua biến môi trường VITE_CHATBOT_API_URL khi deploy.
+// Chatbot AI (Python) chạy ở host riêng, KHÁC với Spring backend (localhost:8080).
+// 2 model blocking (only-llm/base-llm): đã đăng nhập -> QUA BE (lưu lịch sử, xem sendChatMessage);
+// chưa đăng nhập -> gọi THẲNG AI để test (không lưu). Luồng chính (stream-deep) luôn qua BE.
 const chatbotBaseURL =
   import.meta.env.VITE_CHATBOT_API_URL ?? 'http://localhost:8000'
+
+// Base URL của BE (Spring), tái dùng của apiClient cho nhất quán.
+const beBaseURL = apiClient.defaults.baseURL // http://localhost:8080/api/
+
+// Đọc accessToken (cùng cách interceptor apiClient đọc từ localStorage 'auth-storage').
+// fetch (stream) KHÔNG đi qua interceptor của axios -> phải tự gắn Authorization.
+const getAccessToken = () => {
+  try {
+    const raw = localStorage.getItem('auth-storage')
+    return raw ? JSON.parse(raw)?.state?.accessToken : null
+  } catch {
+    return null
+  }
+}
+
+// Bóc envelope ApiResponse của BE: { code, message, result, ... } -> result.
+const unwrap = (res) => res?.data?.result
 
 const chatbotClient = axios.create({
   baseURL: chatbotBaseURL,
@@ -19,13 +37,15 @@ export const CHAT_MODELS = [
     id: 'only-llm',
     label: 'Mythis 5',
     description: 'Mô hình ngôn ngữ đã huấn luyện văn học',
-    endpoint: '/chat/only-llm',
+    endpoint: '/chat/only-llm', // gọi thẳng AI (khách chưa đăng nhập)
+    beModel: 'ONLY_LLM', // enum model khi đi qua BE (đã đăng nhập, có lưu lịch sử)
   },
   {
     id: 'base-llm',
     label: 'HuKai 4.5',
     description: 'Mô hình ngôn ngữ nền tảng',
-    endpoint: '/chat/base-llm',
+    endpoint: '/chat/base-llm', // gọi thẳng AI (khách chưa đăng nhập)
+    beModel: 'BASE_LLM', // enum model khi đi qua BE (đã đăng nhập, có lưu lịch sử)
   },
   {
     id: 'stream-deep',
@@ -34,6 +54,7 @@ export const CHAT_MODELS = [
       'Phân tích sâu — hội đồng tranh luận, hiện quá trình tư duy realtime',
     endpoint: '/chat/stream',
     streaming: true,
+    requiresAuth: true, // BE bắt buộc token -> khách chưa đăng nhập không gọi được
   },
 ]
 
@@ -58,12 +79,32 @@ const extractReply = (data) => {
   return String(data ?? '')
 }
 
-// Gửi 1 tin nhắn tới model được chọn. Body đúng định dạng { message } như yêu cầu.
-// Trả về { answer, model } để UI vừa hiển thị câu trả lời vừa biết model thực sự xử lý.
-export const sendChatMessage = async ({ message, modelId }) => {
+// Gửi 1 tin nhắn tới model blocking (only-llm/base-llm).
+//  - Đã đăng nhập -> QUA BE /conversations/messages/sync: BE lưu transcript (USER+ASSISTANT) và
+//    trả conversationId để chat tiếp / hiện ở lịch sử. KHÔNG nhớ ngữ cảnh (mỗi lượt độc lập).
+//  - Chưa đăng nhập -> gọi THẲNG AI như cũ (lịch sử gắn theo tài khoản nên không có chỗ lưu).
+// Trả { conversationId, answer, model }: conversationId=null khi không lưu (khách chưa đăng nhập).
+export const sendChatMessage = async ({ message, modelId, conversationId }) => {
   const model = CHAT_MODELS.find((m) => m.id === modelId) ?? CHAT_MODELS[0]
+
+  if (getAccessToken()) {
+    const result = await apiClient
+      .post('/v1/chat/conversations/messages/sync', {
+        conversationId: conversationId ?? null,
+        message,
+        model: model.beModel,
+      })
+      .then(unwrap)
+    return {
+      conversationId: result?.conversationId ?? null,
+      answer: result?.answer ?? '',
+      model: result?.model ?? model.label,
+    }
+  }
+
   const response = await chatbotClient.post(model.endpoint, { message })
   return {
+    conversationId: null,
     answer: extractReply(response.data),
     model: response.data?.model ?? model.label,
   }
@@ -129,20 +170,32 @@ export const isHiddenThinkingEvent = (ev) => {
 }
 
 /**
- * Mở SSE tới /chat/stream và gọi onEvent cho MỖI StreamEvent nhận được.
+ * Gửi 1 tin nhắn QUA BACKEND. BE relay stream từ AI về, đồng thời auth + lưu lịch sử.
+ * FE chỉ nói chuyện với BE (không chạm AI) -> bảo mật, AI ẩn nội bộ.
  *
- * Lưu ý quan trọng (theo hợp đồng với backend):
- *  - KHÔNG dùng EventSource: nó chỉ GET được, còn endpoint này là POST (cần body
- *    `message`). Phải dùng fetch() + đọc response.body (ReadableStream) thủ công.
- *  - Event ngăn cách nhau bằng dòng trống "\n\n"; mỗi block lấy các dòng "data:".
- *  - Gọi onEvent theo ĐÚNG THỨ TỰ NHẬN (không sort theo seq — seq của debate có thể trùng).
- *  - Kết thúc: BE gửi event type "done" rồi đóng stream (reader done=true).
+ * Hợp đồng:
+ *  - POST /api/v1/chat/conversations/messages, body { conversationId, message }.
+ *    conversationId=null -> BE tạo đoạn mới (lazy-create).
+ *  - Auth bằng accessToken (tự gắn vì fetch không qua interceptor axios).
+ *  - Đọc SSE thủ công (POST nên không dùng EventSource); event cách nhau "\n\n", lấy dòng "data:".
+ *  - Event ĐẦU TIÊN của BE có type="conversation" mang conversationId thực -> onEvent nhận,
+ *    caller lưu lại để chat tiếp. Các event sau (status/intent/token/done...) do AI sinh, BE
+ *    chuyền tay realtime -> shape y hệt như gọi thẳng AI trước đây.
  */
-export const streamChat = async ({ message, threadId, onEvent, signal }) => {
-  const res = await fetch(`${chatbotBaseURL}/chat/stream`, {
+export const streamChat = async ({
+  message,
+  conversationId,
+  onEvent,
+  signal,
+}) => {
+  const token = getAccessToken()
+  const res = await fetch(`${beBaseURL}v1/chat/conversations/messages`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, thread_id: threadId }),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ conversationId: conversationId ?? null, message }),
     signal,
   })
   if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
@@ -176,3 +229,27 @@ export const streamChat = async ({ message, threadId, onEvent, signal }) => {
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Lịch sử hội thoại (qua BE, apiClient tự gắn auth + refresh token)
+// ---------------------------------------------------------------------------
+
+/** Danh sách hội thoại của người dùng (sidebar), mới nhất trước. */
+export const listConversations = async () =>
+  (await apiClient.get('/v1/chat/conversations').then(unwrap)) ?? []
+
+/** Mở lại 1 đoạn cũ: BE trả { id, title, messages } và seed lại AI để chat tiếp. */
+export const openConversation = async (conversationId) =>
+  apiClient.get(`/v1/chat/conversations/${conversationId}`).then(unwrap)
+
+/** Xóa 1 đoạn hội thoại. */
+export const deleteConversation = async (conversationId) =>
+  apiClient.delete(`/v1/chat/conversations/${conversationId}`)
+
+/**
+ * Dừng luồng stream đang chạy của 1 đoạn: BE huỷ AI (đóng kết nối BE↔AI -> Ollama dừng) và
+ * KHÔNG lưu câu trả lời. FE gọi cái này rồi mới abort fetch (đóng FE↔BE). Nếu KHÔNG gọi (chỉ
+ * rớt mạng) thì BE vẫn đọc nốt và lưu final message.
+ */
+export const stopStream = async (conversationId) =>
+  apiClient.post(`/v1/chat/conversations/${conversationId}/stop`)

@@ -11,16 +11,25 @@ import {
   ChevronDown,
   Check,
   Square,
+  History,
+  Plus,
+  Trash2,
+  Lock,
 } from 'lucide-react'
 import {
   sendChatMessage,
   streamChat,
+  stopStream,
   formatRichText,
   CHAT_MODELS,
   DEFAULT_CHAT_MODEL,
+  listConversations,
+  openConversation,
+  deleteConversation,
 } from '../../../services/chat.service'
 import { ThinkingSummaryChip } from './ThinkingSummaryChip'
 import { ThinkingProcessPanel } from './ThinkingProcessPanel'
+import { useAuthStore } from '../../auth/store/auth.store'
 import chatbotInsideIcon from '../../../assets/images/chatbot-inside-icon.png'
 
 // Nhận diện event "bắt đầu viết bài luận" -> mốc để mở 1 bong bóng bản thảo mới trong
@@ -50,15 +59,16 @@ const updateLastAssistant = (messages, fn) => {
   return next
 }
 
+// Lời chào mở đầu (bong bóng client-side, KHÔNG lưu DB). Dùng cho cả khởi tạo lẫn "đoạn mới".
+const greetingFor = (work) => ({
+  role: 'assistant',
+  content: work?.title
+    ? `Xin chào! Tôi là Mộc Bản AI. Tôi có thể giúp bạn giải đáp các thắc mắc, tóm tắt nội dung hoặc phân tích nghệ thuật về tác phẩm **${work.title}**. Bạn muốn tôi giúp gì nào?`
+    : `Xin chào! Tôi là **Mộc Bản AI** — trợ lý văn học của bạn. Tôi có thể tóm tắt, phân tích tác phẩm, giải nghĩa từ Hán–Việt hay trả lời các câu hỏi về văn học Việt Nam. Bạn muốn hỏi gì nào?`,
+})
+
 export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: work?.title
-        ? `Xin chào! Tôi là Mộc Bản AI. Tôi có thể giúp bạn giải đáp các thắc mắc, tóm tắt nội dung hoặc phân tích nghệ thuật về tác phẩm **${work.title}**. Bạn muốn tôi giúp gì nào?`
-        : `Xin chào! Tôi là **Mộc Bản AI** — trợ lý văn học của bạn. Tôi có thể tóm tắt, phân tích tác phẩm, giải nghĩa từ Hán–Việt hay trả lời các câu hỏi về văn học Việt Nam. Bạn muốn hỏi gì nào?`,
-    },
-  ])
+  const [messages, setMessages] = useState(() => [greetingFor(work)])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -68,10 +78,26 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   const messagesEndRef = useRef(null)
   // Index tin nhắn đang mở panel "quá trình suy nghĩ" bên trái (null = đóng).
   const [thinkingIndex, setThinkingIndex] = useState(null)
-  // Giữ nguyên thread_id suốt phiên chat để backend nhớ ngữ cảnh nhiều lượt.
-  const threadIdRef = useRef(undefined)
+  // conversationId do BE cấp (event "conversation" đầu stream). null = đoạn mới chưa tạo DB.
+  // Ref: đọc/ghi đồng bộ trong luồng stream (không gây re-render). State: chỉ để highlight
+  // đoạn đang mở trong dropdown lịch sử lúc render. Luôn set qua setConversationId để 2 giá
+  // trị không lệch nhau.
+  const conversationIdRef = useRef(null)
+  const [activeConversationId, setActiveConversationId] = useState(null)
+  const setConversationId = (id) => {
+    conversationIdRef.current = id
+    setActiveConversationId(id)
+  }
+  // Lịch sử hội thoại (dropdown trên header).
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [conversations, setConversations] = useState([])
   // Cho phép hủy stream đang chạy khi đóng popup / rời trang.
   const abortRef = useRef(null)
+
+  // Trạng thái đăng nhập: có accessToken = đã đăng nhập. Lịch sử trò chuyện là dữ liệu
+  // riêng theo user (BE gắn theo tài khoản) nên chỉ mở cho người đã đăng nhập.
+  const accessToken = useAuthStore((s) => s.accessToken)
+  const isAuthenticated = Boolean(accessToken)
 
   // Bộ gõ chữ (typewriter) cho BẢN THẢO bài luận — hiển thị trong PANEL SUY NGHĨ bên
   // trái, KHÔNG vào box chat. Backend tạo xong bài rồi "tua" token ra gần như MỘT CỤM
@@ -166,16 +192,20 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     stopDraft()
     draftRef.current = { target: '', shown: 0, timer: null, done: false }
 
-    if (!threadIdRef.current) threadIdRef.current = crypto.randomUUID()
     const controller = new AbortController()
     abortRef.current = controller
 
     try {
       await streamChat({
         message,
-        threadId: threadIdRef.current,
+        conversationId: conversationIdRef.current,
         signal: controller.signal,
         onEvent: (ev) => {
+          // Event đầu của BE: conversationId thực (đoạn mới vừa tạo / đoạn đang chat) -> lưu lại.
+          if (ev.type === 'conversation') {
+            setConversationId(ev.conversationId)
+            return
+          }
           // token = mẩu chữ bản thảo bài luận -> gõ vào PANEL SUY NGHĨ (bong bóng 'essay'
           // đang mở), KHÔNG vào box chat. (BE tua cả cụm token ngay trước `done`.)
           if (ev.type === 'token' && ev.is_partial) {
@@ -265,10 +295,16 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     }
   }
 
-  // Model blocking (2 model cũ): gọi 1 phát, nhận nguyên câu trả lời.
+  // Model blocking (2 model đơn): gọi 1 phát, nhận nguyên câu trả lời.
   const handleBlocking = async (message, modelId) => {
     try {
-      const { answer } = await sendChatMessage({ message, modelId })
+      const { conversationId, answer } = await sendChatMessage({
+        message,
+        modelId,
+        conversationId: conversationIdRef.current,
+      })
+      // Đã đăng nhập -> BE trả conversationId (đoạn mới vừa tạo / đoạn đang chat) -> lưu để chat tiếp.
+      if (conversationId) setConversationId(conversationId)
       setMessages((prev) => [
         ...prev,
         {
@@ -340,6 +376,33 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     [],
   )
 
+  // Đăng xuất: xóa sạch lịch sử + đoạn chat của phiên trước để người dùng sau KHÔNG thấy
+  // dữ liệu người trước (popup mount 1 lần toàn app, không tự remount khi logout nên state
+  // cũ còn nguyên). Lắng nghe store và chỉ reset khi accessToken chuyển từ CÓ -> null (đăng
+  // xuất); token refresh đổi accessToken sang giá trị MỚI khác null nên không kích hoạt reset
+  // -> đang chat không bị xoá oan.
+  useEffect(
+    () =>
+      useAuthStore.subscribe((state, prev) => {
+        if (!prev.accessToken || state.accessToken) return
+        abortRef.current?.abort()
+        abortRef.current = null
+        stopDraft()
+        setConversations([])
+        setConversationId(null)
+        setThinkingIndex(null)
+        setHistoryOpen(false)
+        setMessages([greetingFor(work)])
+        // Đang dùng model cần token mà đăng xuất -> về model mặc định, tránh gửi rồi dính 401.
+        setSelectedModel((prev) =>
+          CHAT_MODELS.find((m) => m.id === prev)?.requiresAuth
+            ? DEFAULT_CHAT_MODEL
+            : prev,
+        )
+      }),
+    [work],
+  )
+
   // Đóng popup: reset panel suy nghĩ để lần mở sau không tự bung lại panel cũ.
   const handleClose = () => {
     setThinkingIndex(null)
@@ -349,6 +412,11 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   // Dừng lượt streaming đang chạy: abort fetch -> backend cancel luôn workflow deep
   // (LangGraph hủy node đang chạy, request tới Ollama bị hủy theo).
   const handleStop = () => {
+    // Báo BE huỷ THẬT (đóng BE↔AI -> Ollama dừng, KHÔNG lưu câu trả lời) rồi mới abort fetch.
+    // Có conversationId mới gọi được; chưa có (rớt cửa sổ <1s đầu) thì chỉ abort -> BE coi như
+    // rớt tạm thời và vẫn lưu final. best-effort: lỗi /stop không được chặn việc dừng UI.
+    const id = conversationIdRef.current
+    if (id) stopStream(id).catch(() => {})
     abortRef.current?.abort()
     abortRef.current = null
   }
@@ -360,6 +428,63 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     }
   }
 
+  // --- Lịch sử hội thoại ---
+  const refreshHistory = async () => {
+    try {
+      setConversations(await listConversations())
+    } catch {
+      // chưa đăng nhập / lỗi mạng -> xóa danh sách để không hiện dữ liệu cũ của phiên trước
+      setConversations([])
+    }
+  }
+
+  const handleToggleHistory = () => {
+    setHistoryOpen((v) => {
+      const next = !v
+      if (next) refreshHistory()
+      return next
+    })
+  }
+
+  // Đoạn chat mới: quên conversationId để lượt gửi sau BE tạo đoạn mới; reset về lời chào.
+  const handleNewChat = () => {
+    if (isTyping) return
+    setConversationId(null)
+    setMessages([greetingFor(work)])
+    setThinkingIndex(null)
+    setHistoryOpen(false)
+  }
+
+  // Mở lại 1 đoạn cũ: nạp transcript từ BE (BE cũng seed lại AI để chat tiếp).
+  const handleLoadConversation = async (id) => {
+    if (isTyping) return
+    try {
+      const detail = await openConversation(id)
+      setConversationId(detail.id)
+      const loaded = (detail.messages || []).map((m) => ({
+        role:
+          String(m.role).toLowerCase() === 'assistant' ? 'assistant' : 'user',
+        content: m.content,
+      }))
+      setMessages(loaded.length ? loaded : [greetingFor(work)])
+      setThinkingIndex(null)
+      setHistoryOpen(false)
+    } catch {
+      /* lỗi -> giữ nguyên màn hình hiện tại */
+    }
+  }
+
+  const handleDeleteConversation = async (id, e) => {
+    e.stopPropagation()
+    try {
+      await deleteConversation(id)
+      setConversations((prev) => prev.filter((c) => c.id !== id))
+      if (conversationIdRef.current === id) handleNewChat()
+    } catch {
+      /* ignore */
+    }
+  }
+
   if (!isOpen) return null
 
   // Chỉ model streaming mới hủy được giữa chừng (2 model blocking không có kết nối để đóng).
@@ -367,6 +492,148 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     isTyping && !!CHAT_MODELS.find((m) => m.id === selectedModel)?.streaming
 
   const thinkingMsg = thinkingIndex != null ? messages[thinkingIndex] : null
+
+  // Bộ chọn model (nút + dropdown) — tách riêng để đặt CHUNG hàng với cụm nút action trên
+  // header (cả khi thu nhỏ lẫn mở rộng), bỏ thanh chọn model riêng cho gọn màn hình chat.
+  // Dropdown mở về phía có chỗ: thu nhỏ (nút bên trái) -> xổ sang phải (left-0); mở rộng
+  // (nút bên phải) -> xổ sang trái (right-0), tránh tràn mép popup.
+  const modelSelector = (
+    <div className="relative">
+      <button
+        onClick={() => setIsModelOpen((v) => !v)}
+        className="group flex items-center gap-2 px-3.5 py-2 rounded-full bg-white border border-[#83746d]/20 shadow-sm hover:border-[#ab3429]/50 hover:bg-[#ab3429]/[0.03] transition-all"
+        title="Chọn mô hình AI"
+      >
+        <Cpu size={14} className="text-[#ab3429]" />
+        <span className="text-[12px] font-bold text-[#412311] tracking-wide whitespace-nowrap">
+          {activeModel.label}
+        </span>
+        <ChevronDown
+          size={14}
+          className={`text-[#83746d] transition-transform duration-300 ${
+            isModelOpen ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+
+      {isModelOpen && (
+        <>
+          {/* Lớp phủ bắt click ra ngoài để đóng dropdown */}
+          <div
+            className="fixed inset-0 z-30"
+            onClick={() => setIsModelOpen(false)}
+          />
+          <div
+            className={`absolute top-full mt-1.5 w-[260px] bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_12px_40px_rgba(65,35,17,0.18)] border border-[#83746d]/15 z-40 p-1.5 animate-in fade-in slide-in-from-top-1 duration-200 ${
+              isExpanded ? 'right-0' : 'left-0'
+            }`}
+          >
+            {CHAT_MODELS.map((model) => {
+              const isActive = model.id === selectedModel
+              // Model cần token (Trạng Nguyên): khách chưa đăng nhập -> làm mờ, khoá chọn
+              // và đổi mô tả thành lời mời đăng nhập thay vì để họ chọn rồi dính 401.
+              const isLocked = model.requiresAuth && !isAuthenticated
+              return (
+                <button
+                  key={model.id}
+                  disabled={isLocked}
+                  onClick={() => {
+                    setSelectedModel(model.id)
+                    setIsModelOpen(false)
+                  }}
+                  className={`w-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all ${
+                    isLocked
+                      ? 'opacity-45 cursor-not-allowed'
+                      : isActive
+                        ? 'bg-[#ab3429]/[0.08]'
+                        : 'hover:bg-[#83746d]/[0.08]'
+                  }`}
+                >
+                  {isLocked ? (
+                    <Lock
+                      size={16}
+                      className="mt-0.5 flex-shrink-0 text-[#83746d]"
+                    />
+                  ) : (
+                    <Cpu
+                      size={16}
+                      className={`mt-0.5 flex-shrink-0 ${
+                        isActive ? 'text-[#ab3429]' : 'text-[#83746d]'
+                      }`}
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <span
+                      className={`block text-[13px] font-bold ${
+                        isActive && !isLocked
+                          ? 'text-[#ab3429]'
+                          : 'text-[#412311]'
+                      }`}
+                    >
+                      {model.label}
+                    </span>
+                    <span className="block text-[11px] text-[#83746d] mt-0.5 leading-snug">
+                      {isLocked
+                        ? 'Đăng nhập để trải nghiệm'
+                        : model.description}
+                    </span>
+                  </div>
+                  {isActive && !isLocked && (
+                    <Check
+                      size={16}
+                      className="text-[#ab3429] mt-0.5 flex-shrink-0"
+                    />
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+
+  const actionButtons = (
+    <div className="flex items-center gap-2 bg-white/60 backdrop-blur-md rounded-full p-1 border border-[#83746d]/10 shadow-sm">
+      <button
+        onClick={handleNewChat}
+        className="p-2 rounded-full hover:bg-white transition-all text-[#83746d] hover:text-[#412311]"
+        title="Đoạn chat mới"
+      >
+        <Plus size={16} />
+      </button>
+      {/* Lịch sử trò chuyện chỉ dành cho người đã đăng nhập (dữ liệu theo tài khoản) */}
+      {isAuthenticated && (
+        <button
+          onClick={handleToggleHistory}
+          className={`p-2 rounded-full hover:bg-white transition-all ${
+            historyOpen
+              ? 'text-[#ab3429] bg-white'
+              : 'text-[#83746d] hover:text-[#412311]'
+          }`}
+          title="Lịch sử trò chuyện"
+        >
+          <History size={16} />
+        </button>
+      )}
+      <div className="w-[1px] h-4 bg-[#83746d]/20 mx-0.5"></div>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="p-2 rounded-full hover:bg-white transition-all text-[#83746d] hover:text-[#412311]"
+        title={isExpanded ? 'Thu nhỏ' : 'Mở rộng'}
+      >
+        {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+      </button>
+      <div className="w-[1px] h-4 bg-[#83746d]/20 mx-0.5"></div>
+      <button
+        onClick={handleClose}
+        className="p-2 rounded-full hover:bg-white transition-all text-[#83746d] hover:text-[#ab3429]"
+        title="Đóng"
+      >
+        <X size={18} />
+      </button>
+    </div>
+  )
 
   return (
     <>
@@ -391,118 +658,102 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
         {/* Texture nền giấy */}
         <div className="absolute inset-0 pointer-events-none opacity-[0.15] mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')] rounded-[inherit]"></div>
 
-        {/* Header Premium Light */}
-        <div className="relative px-7 py-6 bg-white/40 backdrop-blur-xl border-b border-[#83746d]/10 flex items-center justify-between rounded-t-[inherit] z-10 flex-shrink-0">
-          <div className="flex items-center gap-4">
+        {/* Header — MỞ RỘNG: 1 hàng (tiêu đề trái | model + action bên phải) kèm dòng phụ.
+            THU NHỎ: 2 hàng (tiêu đề trên; model bên trái + action bên phải ở hàng dưới).
+            Gộp bộ chọn model vào header, bỏ thanh model riêng -> tối ưu chiều cao khung chat.
+            z-30 để dropdown model xổ xuống nổi TRÊN khung chat (khung chat z-10). */}
+        <div
+          className={`relative bg-white/40 backdrop-blur-xl border-b border-[#83746d]/10 rounded-t-[inherit] z-30 flex-shrink-0 ${
+            isExpanded
+              ? 'px-7 py-6 flex items-center justify-between'
+              : 'px-5 py-4 flex flex-col gap-3'
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
             <img
               src={chatbotInsideIcon}
               alt="Mộc Bản AI"
-              className="w-15 h-15 rounded-2xl object-contain drop-shadow-[0_4px_12px_rgba(65,35,17,0.22)]"
+              className={`rounded-2xl object-contain drop-shadow-[0_4px_12px_rgba(65,35,17,0.22)] flex-shrink-0 ${
+                isExpanded ? 'w-15 h-15' : 'w-11 h-11'
+              }`}
             />
-            <div>
-              <h3 className="font-title text-[18px] font-black flex items-center gap-2 tracking-wide text-[#412311]">
+            <div className="min-w-0">
+              <h3 className="font-title text-[18px] font-black flex items-center gap-2 tracking-wide text-[#412311] whitespace-nowrap">
                 Mộc Bản AI
-                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#ab3429]/10">
+                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-[#ab3429]/10 flex-shrink-0">
                   <Sparkles size={12} className="text-[#ab3429]" />
                 </span>
               </h3>
-              <p className="text-[10.5px] text-[#83746d] font-bold tracking-[0.15em] uppercase mt-1">
-                Trợ lý Văn học Cao cấp
-              </p>
+              {/* Dòng phụ chỉ hiện khi mở rộng — thu nhỏ bỏ đi cho gọn chiều cao */}
+              {isExpanded && (
+                <p className="text-[10.5px] text-[#83746d] font-bold tracking-[0.15em] uppercase mt-1">
+                  Trợ lý Văn học Cao cấp
+                </p>
+              )}
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-white/60 backdrop-blur-md rounded-full p-1 border border-[#83746d]/10 shadow-sm">
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="p-2 rounded-full hover:bg-white transition-all text-[#83746d] hover:text-[#412311]"
-              title={isExpanded ? 'Thu nhỏ' : 'Mở rộng'}
-            >
-              {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-            </button>
-            <div className="w-[1px] h-4 bg-[#83746d]/20 mx-0.5"></div>
-            <button
-              onClick={handleClose}
-              className="p-2 rounded-full hover:bg-white transition-all text-[#83746d] hover:text-[#ab3429]"
-              title="Đóng"
-            >
-              <X size={18} />
-            </button>
+          {/* Cụm bộ chọn model + nút action. Thu nhỏ: chiếm cả hàng (model trái, action phải);
+              mở rộng: nằm gọn bên phải, model sát trái cụm action. */}
+          <div
+            className={`flex items-center gap-2 ${
+              isExpanded ? '' : 'w-full justify-between'
+            }`}
+          >
+            {modelSelector}
+            {actionButtons}
           </div>
         </div>
 
-        {/* Thanh chọn Model (giống bộ chọn model của Claude/Gemini) */}
-        <div className="relative px-6 py-3 bg-white/30 backdrop-blur-md border-b border-[#83746d]/10 z-30 flex-shrink-0">
-          <button
-            onClick={() => setIsModelOpen((v) => !v)}
-            className="group flex items-center gap-2 px-3.5 py-2 rounded-full bg-white border border-[#83746d]/20 shadow-sm hover:border-[#ab3429]/50 hover:bg-[#ab3429]/[0.03] transition-all"
-            title="Chọn mô hình AI"
-          >
-            <Cpu size={14} className="text-[#ab3429]" />
-            <span className="text-[12px] font-bold text-[#412311] tracking-wide">
-              {activeModel.label}
-            </span>
-            <ChevronDown
-              size={14}
-              className={`text-[#83746d] transition-transform duration-300 ${
-                isModelOpen ? 'rotate-180' : ''
-              }`}
+        {/* Dropdown lịch sử hội thoại (chỉ cho người đã đăng nhập) */}
+        {isAuthenticated && historyOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-30"
+              onClick={() => setHistoryOpen(false)}
             />
-          </button>
-
-          {isModelOpen && (
-            <>
-              {/* Lớp phủ bắt click ra ngoài để đóng dropdown */}
-              <div
-                className="fixed inset-0 z-30"
-                onClick={() => setIsModelOpen(false)}
-              />
-              <div className="absolute left-6 top-full mt-1.5 w-[260px] bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_12px_40px_rgba(65,35,17,0.18)] border border-[#83746d]/15 z-40 p-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                {CHAT_MODELS.map((model) => {
-                  const isActive = model.id === selectedModel
-                  return (
-                    <button
-                      key={model.id}
-                      onClick={() => {
-                        setSelectedModel(model.id)
-                        setIsModelOpen(false)
-                      }}
-                      className={`w-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all ${
-                        isActive
-                          ? 'bg-[#ab3429]/[0.08]'
-                          : 'hover:bg-[#83746d]/[0.08]'
-                      }`}
-                    >
-                      <Cpu
-                        size={16}
-                        className={`mt-0.5 flex-shrink-0 ${
-                          isActive ? 'text-[#ab3429]' : 'text-[#83746d]'
-                        }`}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <span
-                          className={`block text-[13px] font-bold ${
-                            isActive ? 'text-[#ab3429]' : 'text-[#412311]'
-                          }`}
-                        >
-                          {model.label}
-                        </span>
-                        <span className="block text-[11px] text-[#83746d] mt-0.5 leading-snug">
-                          {model.description}
-                        </span>
-                      </div>
-                      {isActive && (
-                        <Check
-                          size={16}
-                          className="text-[#ab3429] mt-0.5 flex-shrink-0"
-                        />
-                      )}
-                    </button>
-                  )
-                })}
+            <div
+              className={`absolute right-6 w-[300px] max-h-[360px] overflow-y-auto bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_12px_40px_rgba(65,35,17,0.18)] border border-[#83746d]/15 z-40 p-1.5 custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-200 ${
+                isExpanded ? 'top-[96px]' : 'top-[132px]'
+              }`}
+            >
+              <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#83746d]">
+                Lịch sử trò chuyện
               </div>
-            </>
-          )}
-        </div>
+              {conversations.length === 0 ? (
+                <div className="px-3 py-4 text-[12.5px] text-[#83746d]">
+                  Chưa có đoạn hội thoại nào.
+                </div>
+              ) : (
+                conversations.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => handleLoadConversation(c.id)}
+                    className={`group flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
+                      activeConversationId === c.id
+                        ? 'bg-[#ab3429]/[0.08]'
+                        : 'hover:bg-[#83746d]/[0.08]'
+                    }`}
+                  >
+                    <History
+                      size={14}
+                      className="text-[#83746d] flex-shrink-0"
+                    />
+                    <span className="flex-1 min-w-0 truncate text-[13px] text-[#412311]">
+                      {c.title || 'Đoạn chat'}
+                    </span>
+                    <span
+                      onClick={(e) => handleDeleteConversation(c.id, e)}
+                      title="Xóa"
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-[#ab3429]/10 text-[#83746d] hover:text-[#ab3429] transition-all"
+                    >
+                      <Trash2 size={13} />
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
 
         {/* Chat Area */}
         <div className="relative flex-1 overflow-y-auto p-5 custom-scrollbar flex flex-col gap-6 z-10">
@@ -595,18 +846,24 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Gợi ý câu hỏi nhanh (Quick Prompts) */}
-        <div className="relative px-6 py-4 flex gap-2.5 overflow-x-auto custom-scrollbar no-scrollbar border-t border-[#83746d]/10 bg-white/40 backdrop-blur-md z-10 flex-shrink-0">
-          {['Tóm tắt', 'Phân tích nhân vật', 'Nghệ thuật'].map((prompt, i) => (
-            <button
-              key={i}
-              onClick={() => handleSend(prompt)}
-              className="whitespace-nowrap px-5 py-2.5 bg-white border border-[#83746d]/20 text-[#412311] text-[11px] font-bold uppercase tracking-[0.1em] rounded-full hover:border-[#ab3429] hover:text-[#ab3429] hover:bg-[#ab3429]/5 transition-all duration-300 shadow-sm"
-            >
-              {prompt}
-            </button>
-          ))}
-        </div>
+        {/* Gợi ý câu hỏi nhanh (Quick Prompts) — chỉ hiện khi MỞ RỘNG. Thu nhỏ thì ẩn để
+            ưu tiên không gian cho khung chat (ở 400px không đủ chỗ cho cả 3 nút chữ hoa,
+            nút cuối luôn bị cắt). */}
+        {isExpanded && (
+          <div className="relative px-6 py-4 flex gap-2.5 overflow-x-auto custom-scrollbar no-scrollbar border-t border-[#83746d]/10 bg-white/40 backdrop-blur-md z-10 flex-shrink-0">
+            {['Tóm tắt', 'Phân tích nhân vật', 'Nghệ thuật'].map(
+              (prompt, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSend(prompt)}
+                  className="whitespace-nowrap px-5 py-2.5 bg-white border border-[#83746d]/20 text-[#412311] text-[11px] font-bold uppercase tracking-[0.1em] rounded-full hover:border-[#ab3429] hover:text-[#ab3429] hover:bg-[#ab3429]/5 transition-all duration-300 shadow-sm"
+                >
+                  {prompt}
+                </button>
+              ),
+            )}
+          </div>
+        )}
 
         {/* Input Area */}
         <div className="relative p-6 pt-3 bg-white/60 backdrop-blur-xl border-t border-[#83746d]/10 rounded-b-[inherit] z-10 flex-shrink-0">
