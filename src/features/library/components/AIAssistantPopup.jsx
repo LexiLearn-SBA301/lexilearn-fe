@@ -293,10 +293,16 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     }
   }
 
-  // Model blocking (2 model cũ): gọi 1 phát, nhận nguyên câu trả lời.
+  // Model blocking (2 model đơn): gọi 1 phát, nhận nguyên câu trả lời.
   const handleBlocking = async (message, modelId) => {
     try {
-      const { answer } = await sendChatMessage({ message, modelId })
+      const { conversationId, answer } = await sendChatMessage({
+        message,
+        modelId,
+        conversationId: conversationIdRef.current,
+      })
+      // Đã đăng nhập -> BE trả conversationId (đoạn mới vừa tạo / đoạn đang chat) -> lưu để chat tiếp.
+      if (conversationId) setConversationId(conversationId)
       setMessages((prev) => [
         ...prev,
         {

@@ -2,8 +2,8 @@ import axios from 'axios'
 import { apiClient } from '../lib/api'
 
 // Chatbot AI (Python) chạy ở host riêng, KHÁC với Spring backend (localhost:8080).
-// 2 model blocking A/B (only-llm/base-llm) gọi THẲNG AI để test — không lưu lịch sử.
-// Còn luồng chat chính (stream-deep) đi QUA BE (relay + auth + lưu lịch sử) — xem streamChat.
+// 2 model blocking (only-llm/base-llm): đã đăng nhập -> QUA BE (lưu lịch sử, xem sendChatMessage);
+// chưa đăng nhập -> gọi THẲNG AI để test (không lưu). Luồng chính (stream-deep) luôn qua BE.
 const chatbotBaseURL =
   import.meta.env.VITE_CHATBOT_API_URL ?? 'http://localhost:8000'
 
@@ -37,13 +37,15 @@ export const CHAT_MODELS = [
     id: 'only-llm',
     label: 'Mythis 5',
     description: 'Mô hình ngôn ngữ đã huấn luyện văn học',
-    endpoint: '/chat/only-llm',
+    endpoint: '/chat/only-llm', // gọi thẳng AI (khách chưa đăng nhập)
+    beModel: 'ONLY_LLM', // enum model khi đi qua BE (đã đăng nhập, có lưu lịch sử)
   },
   {
     id: 'base-llm',
     label: 'HuKai 4.5',
     description: 'Mô hình ngôn ngữ nền tảng',
-    endpoint: '/chat/base-llm',
+    endpoint: '/chat/base-llm', // gọi thẳng AI (khách chưa đăng nhập)
+    beModel: 'BASE_LLM', // enum model khi đi qua BE (đã đăng nhập, có lưu lịch sử)
   },
   {
     id: 'stream-deep',
@@ -76,12 +78,32 @@ const extractReply = (data) => {
   return String(data ?? '')
 }
 
-// Gửi 1 tin nhắn tới model được chọn. Body đúng định dạng { message } như yêu cầu.
-// Trả về { answer, model } để UI vừa hiển thị câu trả lời vừa biết model thực sự xử lý.
-export const sendChatMessage = async ({ message, modelId }) => {
+// Gửi 1 tin nhắn tới model blocking (only-llm/base-llm).
+//  - Đã đăng nhập -> QUA BE /conversations/messages/sync: BE lưu transcript (USER+ASSISTANT) và
+//    trả conversationId để chat tiếp / hiện ở lịch sử. KHÔNG nhớ ngữ cảnh (mỗi lượt độc lập).
+//  - Chưa đăng nhập -> gọi THẲNG AI như cũ (lịch sử gắn theo tài khoản nên không có chỗ lưu).
+// Trả { conversationId, answer, model }: conversationId=null khi không lưu (khách chưa đăng nhập).
+export const sendChatMessage = async ({ message, modelId, conversationId }) => {
   const model = CHAT_MODELS.find((m) => m.id === modelId) ?? CHAT_MODELS[0]
+
+  if (getAccessToken()) {
+    const result = await apiClient
+      .post('/v1/chat/conversations/messages/sync', {
+        conversationId: conversationId ?? null,
+        message,
+        model: model.beModel,
+      })
+      .then(unwrap)
+    return {
+      conversationId: result?.conversationId ?? null,
+      answer: result?.answer ?? '',
+      model: result?.model ?? model.label,
+    }
+  }
+
   const response = await chatbotClient.post(model.endpoint, { message })
   return {
+    conversationId: null,
     answer: extractReply(response.data),
     model: response.data?.model ?? model.label,
   }
