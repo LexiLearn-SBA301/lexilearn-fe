@@ -27,6 +27,7 @@ import {
 } from '../../../services/chat.service'
 import { ThinkingSummaryChip } from './ThinkingSummaryChip'
 import { ThinkingProcessPanel } from './ThinkingProcessPanel'
+import { useAuthStore } from '../../auth/store/auth.store'
 import chatbotInsideIcon from '../../../assets/images/chatbot-inside-icon.png'
 
 // Nhận diện event "bắt đầu viết bài luận" -> mốc để mở 1 bong bóng bản thảo mới trong
@@ -90,6 +91,11 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   const [conversations, setConversations] = useState([])
   // Cho phép hủy stream đang chạy khi đóng popup / rời trang.
   const abortRef = useRef(null)
+
+  // Trạng thái đăng nhập: có accessToken = đã đăng nhập. Lịch sử trò chuyện là dữ liệu
+  // riêng theo user (BE gắn theo tài khoản) nên chỉ mở cho người đã đăng nhập.
+  const accessToken = useAuthStore((s) => s.accessToken)
+  const isAuthenticated = Boolean(accessToken)
 
   // Bộ gõ chữ (typewriter) cho BẢN THẢO bài luận — hiển thị trong PANEL SUY NGHĨ bên
   // trái, KHÔNG vào box chat. Backend tạo xong bài rồi "tua" token ra gần như MỘT CỤM
@@ -362,6 +368,27 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     [],
   )
 
+  // Đăng xuất: xóa sạch lịch sử + đoạn chat của phiên trước để người dùng sau KHÔNG thấy
+  // dữ liệu người trước (popup mount 1 lần toàn app, không tự remount khi logout nên state
+  // cũ còn nguyên). Lắng nghe store và chỉ reset khi accessToken chuyển từ CÓ -> null (đăng
+  // xuất); token refresh đổi accessToken sang giá trị MỚI khác null nên không kích hoạt reset
+  // -> đang chat không bị xoá oan.
+  useEffect(
+    () =>
+      useAuthStore.subscribe((state, prev) => {
+        if (!prev.accessToken || state.accessToken) return
+        abortRef.current?.abort()
+        abortRef.current = null
+        stopDraft()
+        setConversations([])
+        setConversationId(null)
+        setThinkingIndex(null)
+        setHistoryOpen(false)
+        setMessages([greetingFor(work)])
+      }),
+    [work],
+  )
+
   // Đóng popup: reset panel suy nghĩ để lần mở sau không tự bung lại panel cũ.
   const handleClose = () => {
     setThinkingIndex(null)
@@ -387,7 +414,8 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     try {
       setConversations(await listConversations())
     } catch {
-      /* chưa đăng nhập / lỗi mạng -> để danh sách rỗng */
+      // chưa đăng nhập / lỗi mạng -> xóa danh sách để không hiện dữ liệu cũ của phiên trước
+      setConversations([])
     }
   }
 
@@ -497,17 +525,20 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
             >
               <Plus size={16} />
             </button>
-            <button
-              onClick={handleToggleHistory}
-              className={`p-2 rounded-full hover:bg-white transition-all ${
-                historyOpen
-                  ? 'text-[#ab3429] bg-white'
-                  : 'text-[#83746d] hover:text-[#412311]'
-              }`}
-              title="Lịch sử trò chuyện"
-            >
-              <History size={16} />
-            </button>
+            {/* Lịch sử trò chuyện chỉ dành cho người đã đăng nhập (dữ liệu theo tài khoản) */}
+            {isAuthenticated && (
+              <button
+                onClick={handleToggleHistory}
+                className={`p-2 rounded-full hover:bg-white transition-all ${
+                  historyOpen
+                    ? 'text-[#ab3429] bg-white'
+                    : 'text-[#83746d] hover:text-[#412311]'
+                }`}
+                title="Lịch sử trò chuyện"
+              >
+                <History size={16} />
+              </button>
+            )}
             <div className="w-[1px] h-4 bg-[#83746d]/20 mx-0.5"></div>
             <button
               onClick={() => setIsExpanded(!isExpanded)}
@@ -527,8 +558,8 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
           </div>
         </div>
 
-        {/* Dropdown lịch sử hội thoại */}
-        {historyOpen && (
+        {/* Dropdown lịch sử hội thoại (chỉ cho người đã đăng nhập) */}
+        {isAuthenticated && historyOpen && (
           <>
             <div
               className="fixed inset-0 z-30"
