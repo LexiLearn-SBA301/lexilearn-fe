@@ -15,6 +15,8 @@ import {
   Plus,
   Trash2,
   Lock,
+  MessagesSquare,
+  Check as CheckIcon,
 } from 'lucide-react'
 import {
   sendChatMessage,
@@ -26,6 +28,8 @@ import {
   listConversations,
   openConversation,
   deleteConversation,
+  debateOptin,
+  debateReply,
 } from '../../../services/chat.service'
 import { ThinkingSummaryChip } from './ThinkingSummaryChip'
 import { ThinkingProcessPanel } from './ThinkingProcessPanel'
@@ -93,6 +97,28 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   const [conversations, setConversations] = useState([])
   // Cho phép hủy stream đang chạy khi đóng popup / rời trang.
   const abortRef = useRef(null)
+
+  // --- Tranh luận cùng hội đồng AI ---
+  // optedIn: đã bấm nút xin tham gia (cửa sổ bấm = lúc AI chuẩn bị ngữ cảnh).
+  // locked:  hội đồng đã bắt đầu -> bấm nữa cũng vô nghĩa (AI đã đọc & xoá cờ).
+  // awaitHuman: != null nghĩa là hội đồng đang DỪNG chờ mình phát biểu.
+  const [debateOptedIn, setDebateOptedIn] = useState(false)
+  const [debateLocked, setDebateLocked] = useState(false)
+  const [awaitHuman, setAwaitHuman] = useState(null)
+  const [humanTurns, setHumanTurns] = useState(0)
+  const [debateSending, setDebateSending] = useState(false)
+  const [debateError, setDebateError] = useState(null)
+  // Index bong bóng assistant của lượt stream hiện tại -> tự bung panel suy nghĩ khi tới
+  // lượt người học (không bung thì họ chẳng thấy lời mời lẫn luận điểm để phản biện).
+  const streamIndexRef = useRef(null)
+
+  const resetDebate = () => {
+    setDebateOptedIn(false)
+    setDebateLocked(false)
+    setAwaitHuman(null)
+    setHumanTurns(0)
+    setDebateError(null)
+  }
 
   // Trạng thái đăng nhập: có accessToken = đã đăng nhập. Lịch sử trò chuyện là dữ liệu
   // riêng theo user (BE gắn theo tài khoản) nên chỉ mở cho người đã đăng nhập.
@@ -177,16 +203,20 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   // Model streaming (SSE): đổ timeline tư duy realtime rồi mới có câu trả lời cuối.
   const handleStream = async (message) => {
     // Thêm 1 bong bóng assistant rỗng để đổ event vào dần.
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: 'assistant',
-        content: '',
-        events: [],
-        streaming: true,
-        error: null,
-      },
-    ])
+    resetDebate()
+    setMessages((prev) => {
+      streamIndexRef.current = prev.length // index bong bóng vừa thêm (để tự mở panel)
+      return [
+        ...prev,
+        {
+          role: 'assistant',
+          content: '',
+          events: [],
+          streaming: true,
+          error: null,
+        },
+      ]
+    })
 
     // Reset bộ gõ bản thảo cho lượt mới (dừng interval cũ nếu còn sót).
     stopDraft()
@@ -212,6 +242,30 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
             draftRef.current.target += ev.content || ''
             startDraft()
             return
+          }
+          // Hội đồng đã bắt đầu -> khoá nút xin tham gia (tín hiệu điều khiển, không hiện
+          // trên timeline).
+          if (ev.type === 'debate_lock') {
+            setDebateLocked(true)
+            return
+          }
+          // Tới lượt người học: mở ô nhập + tự bung panel (lời mời và các luận điểm cần
+          // phản biện đều nằm trong panel, không bung thì họ không thấy gì để trả lời).
+          if (ev.type === 'await_human') {
+            if (ev.payload?.closed) {
+              setAwaitHuman(null)
+            } else {
+              setAwaitHuman({
+                round: ev.payload?.round ?? 1,
+                max_turns: ev.payload?.max_turns ?? 10,
+                valid_arg_ids: ev.payload?.valid_arg_ids ?? [],
+              })
+              setHumanTurns(0)
+              setDebateError(null)
+              if (streamIndexRef.current != null)
+                setThinkingIndex(streamIndexRef.current)
+            }
+            // KHÔNG return: vẫn cho event chảy vào timeline làm dấu mốc "chỗ tôi được mời".
           }
           // Bắt đầu 1 lượt viết bài mới (kể cả khi judge YÊU CẦU LÀM LẠI): chốt bản thảo
           // cũ rồi mở 1 bong bóng 'essay' mới trong timeline -> mọi lượt đều được giữ lại.
@@ -286,6 +340,8 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
       finalizeDraft()
     } finally {
       abortRef.current = null
+      // Stream đóng (xong / lỗi / bị dừng) -> chắc chắn không còn ai chờ mình phát biểu.
+      setAwaitHuman(null)
       // Nếu stream đóng mà chưa kịp có done -> vẫn tắt trạng thái đang chạy.
       setMessages((prev) =>
         updateLastAssistant(prev, (m) =>
@@ -293,6 +349,58 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
         ),
       )
     }
+  }
+
+  // --- Tranh luận cùng hội đồng ---
+
+  // Xin tham gia. Chỉ bấm được khi đã có conversationId (event đầu của BE) — chưa có thì
+  // AI chưa biết thread nào để gắn cờ.
+  const handleDebateOptin = async () => {
+    const id = conversationIdRef.current
+    if (!id || debateOptedIn || debateLocked) return
+    setDebateOptedIn(true) // lạc quan: phản hồi tức thì, hỏng thì trả lại bên dưới
+    try {
+      await debateOptin(id)
+    } catch {
+      setDebateOptedIn(false)
+    }
+  }
+
+  const sendDebate = async (payload) => {
+    const id = conversationIdRef.current
+    if (!id) return false
+    setDebateSending(true)
+    setDebateError(null)
+    try {
+      await debateReply(id, payload)
+      return true
+    } catch (e) {
+      // 409 = hết giờ chờ / đã kết thúc -> đóng luôn ô nhập, gõ thêm cũng vô ích.
+      const status = e?.response?.status
+      const detail =
+        e?.response?.data?.message || e?.response?.data?.detail || e?.message
+      if (status === 409) setAwaitHuman(null)
+      setDebateError(
+        status === 409
+          ? 'Hội đồng đã tiếp tục — lượt phát biểu đã khép lại.'
+          : detail || 'Không gửi được, thử lại nhé.',
+      )
+      return false
+    } finally {
+      setDebateSending(false)
+    }
+  }
+
+  const handleDebateSend = async (text, { targetArgId, stance }) => {
+    const ok = await sendDebate({ message: text, targetArgId, stance })
+    if (ok) setHumanTurns((n) => n + 1)
+  }
+
+  // "Bỏ qua" và "Kết thúc phản biện" là CÙNG một tín hiệu (message rỗng) — khác nhau đúng
+  // ở nhãn nút. Đóng ô nhập ngay, không đợi AI xác nhận.
+  const handleDebateEnd = async () => {
+    setAwaitHuman(null)
+    await sendDebate({ message: null })
   }
 
   // Model blocking (2 model đơn): gọi 1 phát, nhận nguyên câu trả lời.
@@ -360,7 +468,21 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping])
 
-  // Hủy stream đang chạy khi đóng popup.
+  // Đang tới lượt người học mà rời trang -> MẤT TRẮNG cả lượt tranh luận: hội đồng sống
+  // trong RAM của AI theo kết nối stream này, F5 là stream đứt, 8 lượt critic đã chạy cũng
+  // đi theo. Cảnh báo trước khi họ mất công gõ.
+  useEffect(() => {
+    if (!awaitHuman) return
+    const warn = (e) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [awaitHuman])
+
+  // Hủy stream đang chạy khi đóng popup. (Không cần tự tắt awaitHuman ở đây: abort làm
+  // streamChat reject -> khối finally của handleStream đã setAwaitHuman(null).)
   useEffect(() => {
     if (!isOpen) {
       abortRef.current?.abort()
@@ -490,6 +612,11 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   // Chỉ model streaming mới hủy được giữa chừng (2 model blocking không có kết nối để đóng).
   const canStop =
     isTyping && !!CHAT_MODELS.find((m) => m.id === selectedModel)?.streaming
+
+  // Cửa sổ bấm "Tranh luận cùng AI" = từ lúc BE cấp conversationId tới lúc hội đồng khai
+  // mạc. Chỉ luồng deep (streaming) mới có hội đồng để tranh luận cùng.
+  const canOptinDebate =
+    canStop && !debateLocked && !!activeConversationId && !awaitHuman
 
   const thinkingMsg = thinkingIndex != null ? messages[thinkingIndex] : null
 
@@ -644,6 +771,15 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
         streaming={thinkingMsg?.streaming}
         isExpanded={isExpanded}
         onClose={() => setThinkingIndex(null)}
+        // Ô nhập chỉ gắn vào ĐÚNG bong bóng đang stream: mở panel của lượt chat CŨ trong
+        // lúc lượt mới đang chờ thì không được phép gõ vào đó. `streaming` của chính bong
+        // bóng đang mở là câu trả lời cho việc đó (khỏi so index với ref lúc render).
+        awaitHuman={thinkingMsg?.streaming ? awaitHuman : null}
+        humanTurns={humanTurns}
+        debateSending={debateSending}
+        debateError={debateError}
+        onDebateSend={handleDebateSend}
+        onDebateEnd={handleDebateEnd}
       />
 
       <div
@@ -862,6 +998,35 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
                 </button>
               ),
             )}
+          </div>
+        )}
+
+        {/* Mời tranh luận cùng hội đồng — CHỈ sống trong cửa sổ từ lúc bắt đầu lượt deep tới
+            lúc hội đồng khai mạc (AI bắn `debate_lock`). Qua mốc đó thì bấm cũng vô nghĩa,
+            nên nút biến mất thay vì để đó cho bấm hụt. */}
+        {canOptinDebate && (
+          <div className="relative px-6 pt-3 z-10 flex-shrink-0">
+            <button
+              onClick={handleDebateOptin}
+              disabled={debateOptedIn}
+              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-[12px] font-bold transition-all ${
+                debateOptedIn
+                  ? 'bg-[#ab3429]/[0.07] border-[#ab3429]/25 text-[#ab3429] cursor-default'
+                  : 'bg-white border-[#83746d]/25 text-[#412311] hover:border-[#ab3429] hover:text-[#ab3429] hover:bg-[#ab3429]/[0.04] shadow-sm'
+              }`}
+            >
+              {debateOptedIn ? (
+                <>
+                  <CheckIcon size={14} />
+                  Đã ghi nhận — hội đồng sẽ mời bạn phát biểu
+                </>
+              ) : (
+                <>
+                  <MessagesSquare size={14} />
+                  Tranh luận cùng AI
+                </>
+              )}
+            </button>
           </div>
         )}
 

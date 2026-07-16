@@ -17,6 +17,10 @@ import {
   TriangleAlert,
   Reply,
   FileText,
+  GraduationCap,
+  Hand,
+  Send,
+  CornerDownLeft,
 } from 'lucide-react'
 import {
   getEventUi,
@@ -51,6 +55,8 @@ const VARIANT_ICON = {
   lich_su: Landmark, // Nhà phê bình Lịch sử
   tam_ly: Brain, // Nhà phê bình Tâm lý
   tiep_nhan: Users, // Nhà phê bình Tiếp nhận
+  human: GraduationCap, // Người học (thành viên thứ 5 — người thật)
+  await_human: Hand, // Hội đồng đang chờ người học phát biểu
   judge: Scale, // Giám khảo
   done: CircleCheck,
   error: TriangleAlert,
@@ -81,6 +87,7 @@ const CRITIC_SIDE = {
   tiep_nhan: 'left',
   hinh_thuc: 'right',
   lich_su: 'right',
+  human: 'right', // Người học đứng cùng phía nút gửi -> đọc như "lời của mình"
 }
 
 const VERDICT_LABEL = {
@@ -106,15 +113,21 @@ const CRITIC_META = {
   hinh_thuc: { name: 'Hình thức', color: '#14b8a6' },
   lich_su: { name: 'Lịch sử', color: '#3b82f6' },
   tiep_nhan: { name: 'Tiếp nhận', color: '#ec4899' },
+  human: { name: 'Người học', color: '#ab3429' },
 }
 
-// Nhãn quan điểm của phản biện.
+// Nhãn quan điểm của phản biện. 3 khoá đầu là stance THẬT của backend
+// (Rebuttal.stance = agree | disagree | qualify).
 const STANCE = {
   agree: { label: 'đồng tình', color: '#22c55e' },
   disagree: { label: 'phản bác', color: '#ef4444' },
+  qualify: { label: 'bổ sung', color: '#f59e0b' },
   partial: { label: 'một phần', color: '#f59e0b' },
   neutral: { label: 'trung lập', color: '#64748b' },
 }
+
+// 3 lựa chọn quan điểm cho người học (khớp Literal của backend).
+const STANCE_CHOICES = ['agree', 'qualify', 'disagree']
 
 // Bong bóng "reply" kiểu Messenger: 1 phản biện của critic hiện tại nhắm tới critic
 // khác. Header cho biết đang trả lời AI nào (tên + màu + icon) + quan điểm, phía dưới
@@ -183,10 +196,21 @@ const ReplyBubble = ({ rebuttal, isRight, targetId, onJump }) => {
 // Bong bóng của 1 nhà phê bình: avatar màu + tên + phát biểu chính. Ở Vòng 2, các
 // phản biện được tách ra thành từng bong bóng "reply" riêng (kiểu Messenger).
 // Nền bong bóng màu trắng đặc để nổi rõ trên lớp phủ tối.
-const CriticBubble = ({ ev, ui, targetIds, onJump, highlighted }) => {
+const CriticBubble = ({
+  ev,
+  ui,
+  targetIds,
+  onJump,
+  highlighted,
+  onReplyTo,
+  replyingTo,
+}) => {
   const isRight = (CRITIC_SIDE[ui.variant] ?? 'left') === 'right'
   const args = ev.payload?.arguments
   const rebuttals = ev.payload?.rebuttals
+  // Chỉ luận điểm VÒNG 1 mới có arg_id -> chỉ chúng mới bị nhắm tới được (Rebuttal không
+  // có id riêng). Không cho tự phản biện luận điểm của chính mình (backend cũng chặn).
+  const canReply = Boolean(onReplyTo) && ui.variant !== 'human'
   return (
     <div
       className={`flex items-start gap-2 animate-in fade-in slide-in-from-bottom-3 duration-500 ${
@@ -239,10 +263,34 @@ const CriticBubble = ({ ev, ui, targetIds, onJump, highlighted }) => {
                 {args.map((a, k) => (
                   <li
                     key={`a${k}`}
-                    className="flex gap-1.5 text-[12.5px] leading-snug text-[#4b3d34]"
+                    className="group/arg flex gap-1.5 text-[12.5px] leading-snug text-[#4b3d34]"
                   >
                     <span style={{ color: ui.color }}>▸</span>
-                    <span>{a.point}</span>
+                    <span className="flex-1">{a.point}</span>
+                    {/* Nút "Trả lời" chỉ mọc khi hội đồng đang chờ người học ở VÒNG 2 */}
+                    {canReply && a.arg_id && (
+                      <button
+                        type="button"
+                        onClick={() => onReplyTo(a.arg_id)}
+                        title="Phản biện luận điểm này"
+                        style={
+                          replyingTo === a.arg_id
+                            ? {
+                                backgroundColor: `${ui.color}1a`,
+                                color: ui.color,
+                              }
+                            : undefined
+                        }
+                        className={`flex items-center gap-1 self-start px-1.5 py-0.5 rounded-md text-[10.5px] font-bold transition-all flex-shrink-0 ${
+                          replyingTo === a.arg_id
+                            ? 'opacity-100'
+                            : 'text-[#83746d] opacity-0 group-hover/arg:opacity-100 hover:bg-[#83746d]/10'
+                        }`}
+                      >
+                        <Reply size={10} />
+                        Trả lời
+                      </button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -389,6 +437,176 @@ const EssayDraftBubble = ({ ev }) => {
   )
 }
 
+/**
+ * Khung soạn phát biểu của người học — hiện khi hội đồng tạm dừng chờ (event await_human).
+ *
+ * Vòng 1: ô text tự do (nêu luận điểm của mình -> 4 critic sẽ bắt bẻ lại ở vòng 2).
+ * Vòng 2: phải bấm "Trả lời" trên một luận điểm trước, rồi chọn quan điểm và gõ nội dung —
+ *         phản biện thì bắt buộc phải nhắm vào một luận điểm cụ thể.
+ * Enter gửi, Shift+Enter xuống dòng (giống ô chat chính).
+ */
+const HumanComposer = ({
+  round,
+  target,
+  stance,
+  onStanceChange,
+  onClearTarget,
+  turnsLeft,
+  hasSpoken,
+  sending,
+  error,
+  onSend,
+  onEnd,
+}) => {
+  const [text, setText] = useState('')
+  const inputRef = useRef(null)
+  const needTarget = round === 2 && !target
+  const canSend = text.trim() && !needTarget && !sending
+
+  // Bấm "Trả lời" trên luận điểm -> nhảy con trỏ xuống ô nhập luôn, khỏi phải click lần nữa.
+  useEffect(() => {
+    if (target) inputRef.current?.focus()
+  }, [target])
+
+  const submit = () => {
+    if (!canSend) return
+    onSend(text.trim())
+    setText('')
+  }
+
+  return (
+    <div className="sticky bottom-0 -mx-5 px-5 pt-3 pb-4 bg-gradient-to-t from-[#241a12] via-[#241a12]/95 to-transparent">
+      <div className="rounded-2xl border-2 border-[#ab3429]/60 bg-white shadow-2xl overflow-hidden">
+        {/* Đầu khung: bạn đang ở vòng nào + còn bao nhiêu lượt */}
+        <div className="flex items-center justify-between gap-2 px-3.5 py-2 bg-[#ab3429]/[0.07] border-b border-[#ab3429]/15">
+          <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-[#ab3429]">
+            <GraduationCap size={13} />
+            {round === 1
+              ? 'Lượt của bạn · Nêu luận điểm'
+              : 'Lượt của bạn · Phản biện'}
+          </span>
+          <span className="text-[10.5px] font-bold text-[#83746d]">
+            còn {turnsLeft} lượt
+          </span>
+        </div>
+
+        {/* Vòng 2: chip cho biết đang trả lời luận điểm nào + chọn quan điểm */}
+        {round === 2 && (
+          <div className="px-3.5 pt-2.5 flex flex-wrap items-center gap-1.5">
+            {target ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onClearTarget}
+                  title="Bỏ chọn luận điểm"
+                  style={{
+                    color: target.color,
+                    borderColor: `${target.color}66`,
+                    backgroundColor: `${target.color}12`,
+                  }}
+                  className="flex items-center gap-1 max-w-[60%] border rounded-full pl-2 pr-1.5 py-0.5"
+                >
+                  <Reply size={10} />
+                  <span className="text-[10.5px] font-bold truncate">
+                    {target.name}: {target.point}
+                  </span>
+                  <X size={11} className="flex-shrink-0 opacity-70" />
+                </button>
+                {STANCE_CHOICES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => onStanceChange(s)}
+                    style={
+                      stance === s
+                        ? {
+                            backgroundColor: STANCE[s].color,
+                            borderColor: STANCE[s].color,
+                          }
+                        : {
+                            borderColor: `${STANCE[s].color}66`,
+                            color: STANCE[s].color,
+                          }
+                    }
+                    className={`text-[10px] font-bold uppercase tracking-wide border rounded-full px-2 py-[3px] transition-all ${
+                      stance === s
+                        ? 'text-white shadow-sm'
+                        : 'hover:bg-black/[0.03]'
+                    }`}
+                  >
+                    {STANCE[s].label}
+                  </button>
+                ))}
+              </>
+            ) : (
+              <span className="text-[11px] text-[#83746d] italic">
+                Bấm “Trả lời” ở một luận điểm phía trên để phản biện.
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="flex items-end gap-2 p-2">
+          <textarea
+            ref={inputRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                submit()
+              }
+            }}
+            disabled={needTarget}
+            rows={1}
+            placeholder={
+              needTarget
+                ? 'Chọn luận điểm muốn phản biện…'
+                : round === 1
+                  ? 'Quan điểm của bạn về câu hỏi này…'
+                  : 'Vì sao bạn nghĩ vậy? Dẫn chứng trong văn bản…'
+            }
+            className="w-full max-h-[110px] min-h-[40px] bg-transparent border-none focus:ring-0 resize-none py-2 px-2.5 text-[13px] text-[#412311] placeholder:text-[#83746d]/50 custom-scrollbar leading-[1.6] disabled:cursor-not-allowed"
+          />
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!canSend}
+            title="Gửi (Enter)"
+            className="w-9 h-9 rounded-lg bg-[#ab3429] text-white flex items-center justify-center hover:bg-[#8a1c14] active:scale-95 transition-all disabled:opacity-35 disabled:active:scale-100 flex-shrink-0 mb-0.5"
+          >
+            {sending ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Send size={15} />
+            )}
+          </button>
+        </div>
+
+        {error && (
+          <p className="px-3.5 pb-2 text-[11px] font-semibold text-[#b91c1c]">
+            ⚠️ {error}
+          </p>
+        )}
+
+        <div className="flex items-center justify-between gap-2 px-3.5 py-1.5 bg-[#f5efe4] border-t border-[#83746d]/12">
+          <span className="flex items-center gap-1 text-[10px] text-[#83746d]">
+            <CornerDownLeft size={10} /> Enter để gửi · Shift+Enter xuống dòng
+          </span>
+          {/* Cùng một tín hiệu tới backend (message rỗng); chỉ đổi nhãn theo việc đã nói hay chưa */}
+          <button
+            type="button"
+            onClick={onEnd}
+            className="text-[10.5px] font-bold text-[#83746d] hover:text-[#ab3429] underline underline-offset-2 transition-colors"
+          >
+            {hasSpoken ? 'Kết thúc phản biện' : 'Bỏ qua lượt này'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 const RoundDivider = ({ label }) => (
   <div className="flex items-center gap-3 py-1">
     <span className="flex-1 h-px bg-white/25" />
@@ -410,6 +628,28 @@ const renderRow = (ev, criticProps) => {
 }
 
 /**
+ * arg_id -> { name, color, point } lấy từ các event VÒNG 1 đã nhận.
+ * Dùng để chip "đang trả lời ..." hiện được TÊN và NỘI DUNG luận điểm, vì event await_human
+ * chỉ mang danh sách id trần.
+ */
+const buildArgIndex = (events) => {
+  const index = {}
+  for (const ev of events) {
+    if (ev.type !== 'critic_turn' || ev.payload?.round !== 1) continue
+    const variant = getEventUi(ev).variant
+    for (const a of ev.payload?.arguments ?? []) {
+      if (!a.arg_id) continue
+      index[a.arg_id] = {
+        name: CRITIC_META[variant]?.name ?? ev.actor,
+        color: CRITIC_META[variant]?.color ?? '#83746d',
+        point: a.point,
+      }
+    }
+  }
+  return index
+}
+
+/**
  * Lớp phủ "quá trình suy nghĩ": làm tối nhẹ toàn bộ vùng bên trái (từ mép màn hình
  * đến sát viền khung chat chính) bằng hiệu ứng fade-in, rồi cho các bong bóng chat
  * của từng agent nổi lên trên nền tối đó — KHÔNG có khung/nền giấy bao quanh.
@@ -423,15 +663,37 @@ export const ThinkingProcessPanel = ({
   streaming = false,
   isExpanded = false,
   onClose,
+  // --- tranh luận cùng người học (do AIAssistantPopup lái) ---
+  awaitHuman = null, // { round, max_turns, valid_arg_ids } | null
+  humanTurns = 0, // số lượt đã gửi ở vòng hiện tại
+  debateSending = false,
+  debateError = null,
+  onDebateSend, // (text, { targetArgId, stance }) => void
+  onDebateEnd, // () => void  (Bỏ qua / Kết thúc — cùng 1 tín hiệu)
 }) => {
   const endRef = useRef(null)
   // Row đang được highlight sau khi bấm "Trả lời ..." để nhảy tới.
   const [jumpId, setJumpId] = useState(null)
+  // Vòng 2: luận điểm đang được nhắm tới + quan điểm đã chọn.
+  const [replyTo, setReplyTo] = useState(null)
+  const [stance, setStance] = useState('disagree')
 
   // Cuộn xuống cuối khi có event mới (lúc đang stream) hoặc khi mới mở.
   useEffect(() => {
     if (open) endRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [events, open, streaming])
+
+  // Sang vòng khác / hết lượt chờ -> quên luận điểm đang nhắm, tránh gửi nhầm id của
+  // vòng trước sang vòng sau (backend sẽ trả 400, nhưng đừng để tới đó). Điều chỉnh ngay
+  // trong lúc render (pattern chính thức của React cho "state phụ thuộc prop") thay vì
+  // useEffect — effect sẽ render thừa một nhịp với luận điểm cũ còn dính.
+  const activeRound = awaitHuman?.round ?? null
+  const [prevRound, setPrevRound] = useState(activeRound)
+  if (prevRound !== activeRound) {
+    setPrevRound(activeRound)
+    setReplyTo(null)
+    setStance('disagree')
+  }
 
   // Cuộn lên phát biểu bị phản biện + nháy highlight nhẹ.
   const scrollToId = (id) => {
@@ -446,6 +708,10 @@ export const ThinkingProcessPanel = ({
   if (!open) return null
 
   const visible = events.filter((ev) => !isHiddenThinkingEvent(ev))
+  // Chỉ cho reply khi hội đồng ĐANG chờ ở vòng 2 (vòng 1 là nêu luận điểm, không nhắm ai).
+  const canReplyNow = Boolean(awaitHuman) && awaitHuman.round === 2
+  const argIndex = canReplyNow ? buildArgIndex(visible) : {}
+  const target = replyTo ? { ...argIndex[replyTo], argId: replyTo } : null
 
   // Chèn vạch ngăn "Vòng N" mỗi khi vòng tranh luận thay đổi.
   // r1Index: index bong bóng VÒNG 1 của mỗi critic -> reply luôn nhảy về phát biểu
@@ -475,6 +741,10 @@ export const ThinkingProcessPanel = ({
         targetIds,
         onJump: scrollToId,
         highlighted: jumpId === rowId,
+        // Nút "Trả lời" CHỈ mọc ở vòng 2 và chỉ trên luận điểm vòng 1 (Rebuttal không có
+        // id riêng nên không thể bị nhắm tới).
+        onReplyTo: canReplyNow && round === 1 ? setReplyTo : undefined,
+        replyingTo: replyTo,
       }
     }
 
@@ -546,7 +816,9 @@ export const ThinkingProcessPanel = ({
         >
           {rows}
 
-          {streaming && (
+          {/* Ẩn ba chấm "đang chạy" lúc đang chờ người học: hội đồng đứng yên chờ MÌNH,
+              để ba chấm nhảy thì trông như AI vẫn đang nghĩ. */}
+          {streaming && !awaitHuman && (
             <div className="flex items-center gap-1.5 pl-3 pt-1">
               <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce" />
               <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce [animation-delay:0.2s]" />
@@ -554,6 +826,28 @@ export const ThinkingProcessPanel = ({
             </div>
           )}
           <div ref={endRef} />
+
+          {awaitHuman && (
+            <HumanComposer
+              round={awaitHuman.round}
+              target={target}
+              stance={stance}
+              onStanceChange={setStance}
+              onClearTarget={() => setReplyTo(null)}
+              turnsLeft={(awaitHuman.max_turns ?? 10) - humanTurns}
+              hasSpoken={humanTurns > 0}
+              sending={debateSending}
+              error={debateError}
+              onSend={(text) => {
+                onDebateSend?.(text, {
+                  targetArgId: replyTo,
+                  stance: awaitHuman.round === 2 ? stance : null,
+                })
+                setReplyTo(null) // mỗi phản biện nhắm 1 luận điểm -> chọn lại cho lượt sau
+              }}
+              onEnd={() => onDebateEnd?.()}
+            />
+          )}
         </div>
       </div>
     </>
