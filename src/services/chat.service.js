@@ -1,10 +1,28 @@
 import axios from 'axios'
+import { apiClient } from '../lib/api'
 
-// Chatbot AI (Python) chạy ở host riêng, KHÁC với Spring backend (localhost:8080),
-// và không cần auth token -> dùng axios instance riêng thay vì apiClient chung.
-// Có thể override host qua biến môi trường VITE_CHATBOT_API_URL khi deploy.
+// Chatbot AI (Python) chạy ở host riêng, KHÁC với Spring backend (localhost:8080).
+// 2 model blocking A/B (only-llm/base-llm) gọi THẲNG AI để test — không lưu lịch sử.
+// Còn luồng chat chính (stream-deep) đi QUA BE (relay + auth + lưu lịch sử) — xem streamChat.
 const chatbotBaseURL =
   import.meta.env.VITE_CHATBOT_API_URL ?? 'http://localhost:8000'
+
+// Base URL của BE (Spring), tái dùng của apiClient cho nhất quán.
+const beBaseURL = apiClient.defaults.baseURL // http://localhost:8080/api/
+
+// Đọc accessToken (cùng cách interceptor apiClient đọc từ localStorage 'auth-storage').
+// fetch (stream) KHÔNG đi qua interceptor của axios -> phải tự gắn Authorization.
+const getAccessToken = () => {
+  try {
+    const raw = localStorage.getItem('auth-storage')
+    return raw ? JSON.parse(raw)?.state?.accessToken : null
+  } catch {
+    return null
+  }
+}
+
+// Bóc envelope ApiResponse của BE: { code, message, result, ... } -> result.
+const unwrap = (res) => res?.data?.result
 
 const chatbotClient = axios.create({
   baseURL: chatbotBaseURL,
@@ -129,20 +147,32 @@ export const isHiddenThinkingEvent = (ev) => {
 }
 
 /**
- * Mở SSE tới /chat/stream và gọi onEvent cho MỖI StreamEvent nhận được.
+ * Gửi 1 tin nhắn QUA BACKEND. BE relay stream từ AI về, đồng thời auth + lưu lịch sử.
+ * FE chỉ nói chuyện với BE (không chạm AI) -> bảo mật, AI ẩn nội bộ.
  *
- * Lưu ý quan trọng (theo hợp đồng với backend):
- *  - KHÔNG dùng EventSource: nó chỉ GET được, còn endpoint này là POST (cần body
- *    `message`). Phải dùng fetch() + đọc response.body (ReadableStream) thủ công.
- *  - Event ngăn cách nhau bằng dòng trống "\n\n"; mỗi block lấy các dòng "data:".
- *  - Gọi onEvent theo ĐÚNG THỨ TỰ NHẬN (không sort theo seq — seq của debate có thể trùng).
- *  - Kết thúc: BE gửi event type "done" rồi đóng stream (reader done=true).
+ * Hợp đồng:
+ *  - POST /api/v1/chat/conversations/messages, body { conversationId, message }.
+ *    conversationId=null -> BE tạo đoạn mới (lazy-create).
+ *  - Auth bằng accessToken (tự gắn vì fetch không qua interceptor axios).
+ *  - Đọc SSE thủ công (POST nên không dùng EventSource); event cách nhau "\n\n", lấy dòng "data:".
+ *  - Event ĐẦU TIÊN của BE có type="conversation" mang conversationId thực -> onEvent nhận,
+ *    caller lưu lại để chat tiếp. Các event sau (status/intent/token/done...) do AI sinh, BE
+ *    chuyền tay realtime -> shape y hệt như gọi thẳng AI trước đây.
  */
-export const streamChat = async ({ message, threadId, onEvent, signal }) => {
-  const res = await fetch(`${chatbotBaseURL}/chat/stream`, {
+export const streamChat = async ({
+  message,
+  conversationId,
+  onEvent,
+  signal,
+}) => {
+  const token = getAccessToken()
+  const res = await fetch(`${beBaseURL}v1/chat/conversations/messages`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, thread_id: threadId }),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ conversationId: conversationId ?? null, message }),
     signal,
   })
   if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`)
@@ -176,3 +206,19 @@ export const streamChat = async ({ message, threadId, onEvent, signal }) => {
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Lịch sử hội thoại (qua BE, apiClient tự gắn auth + refresh token)
+// ---------------------------------------------------------------------------
+
+/** Danh sách hội thoại của người dùng (sidebar), mới nhất trước. */
+export const listConversations = async () =>
+  (await apiClient.get('/v1/chat/conversations').then(unwrap)) ?? []
+
+/** Mở lại 1 đoạn cũ: BE trả { id, title, messages } và seed lại AI để chat tiếp. */
+export const openConversation = async (conversationId) =>
+  apiClient.get(`/v1/chat/conversations/${conversationId}`).then(unwrap)
+
+/** Xóa 1 đoạn hội thoại. */
+export const deleteConversation = async (conversationId) =>
+  apiClient.delete(`/v1/chat/conversations/${conversationId}`)

@@ -11,6 +11,9 @@ import {
   ChevronDown,
   Check,
   Square,
+  History,
+  Plus,
+  Trash2,
 } from 'lucide-react'
 import {
   sendChatMessage,
@@ -18,6 +21,9 @@ import {
   formatRichText,
   CHAT_MODELS,
   DEFAULT_CHAT_MODEL,
+  listConversations,
+  openConversation,
+  deleteConversation,
 } from '../../../services/chat.service'
 import { ThinkingSummaryChip } from './ThinkingSummaryChip'
 import { ThinkingProcessPanel } from './ThinkingProcessPanel'
@@ -50,15 +56,16 @@ const updateLastAssistant = (messages, fn) => {
   return next
 }
 
+// Lời chào mở đầu (bong bóng client-side, KHÔNG lưu DB). Dùng cho cả khởi tạo lẫn "đoạn mới".
+const greetingFor = (work) => ({
+  role: 'assistant',
+  content: work?.title
+    ? `Xin chào! Tôi là Mộc Bản AI. Tôi có thể giúp bạn giải đáp các thắc mắc, tóm tắt nội dung hoặc phân tích nghệ thuật về tác phẩm **${work.title}**. Bạn muốn tôi giúp gì nào?`
+    : `Xin chào! Tôi là **Mộc Bản AI** — trợ lý văn học của bạn. Tôi có thể tóm tắt, phân tích tác phẩm, giải nghĩa từ Hán–Việt hay trả lời các câu hỏi về văn học Việt Nam. Bạn muốn hỏi gì nào?`,
+})
+
 export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: work?.title
-        ? `Xin chào! Tôi là Mộc Bản AI. Tôi có thể giúp bạn giải đáp các thắc mắc, tóm tắt nội dung hoặc phân tích nghệ thuật về tác phẩm **${work.title}**. Bạn muốn tôi giúp gì nào?`
-        : `Xin chào! Tôi là **Mộc Bản AI** — trợ lý văn học của bạn. Tôi có thể tóm tắt, phân tích tác phẩm, giải nghĩa từ Hán–Việt hay trả lời các câu hỏi về văn học Việt Nam. Bạn muốn hỏi gì nào?`,
-    },
-  ])
+  const [messages, setMessages] = useState(() => [greetingFor(work)])
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
@@ -68,8 +75,19 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   const messagesEndRef = useRef(null)
   // Index tin nhắn đang mở panel "quá trình suy nghĩ" bên trái (null = đóng).
   const [thinkingIndex, setThinkingIndex] = useState(null)
-  // Giữ nguyên thread_id suốt phiên chat để backend nhớ ngữ cảnh nhiều lượt.
-  const threadIdRef = useRef(undefined)
+  // conversationId do BE cấp (event "conversation" đầu stream). null = đoạn mới chưa tạo DB.
+  // Ref: đọc/ghi đồng bộ trong luồng stream (không gây re-render). State: chỉ để highlight
+  // đoạn đang mở trong dropdown lịch sử lúc render. Luôn set qua setConversationId để 2 giá
+  // trị không lệch nhau.
+  const conversationIdRef = useRef(null)
+  const [activeConversationId, setActiveConversationId] = useState(null)
+  const setConversationId = (id) => {
+    conversationIdRef.current = id
+    setActiveConversationId(id)
+  }
+  // Lịch sử hội thoại (dropdown trên header).
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [conversations, setConversations] = useState([])
   // Cho phép hủy stream đang chạy khi đóng popup / rời trang.
   const abortRef = useRef(null)
 
@@ -166,16 +184,20 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     stopDraft()
     draftRef.current = { target: '', shown: 0, timer: null, done: false }
 
-    if (!threadIdRef.current) threadIdRef.current = crypto.randomUUID()
     const controller = new AbortController()
     abortRef.current = controller
 
     try {
       await streamChat({
         message,
-        threadId: threadIdRef.current,
+        conversationId: conversationIdRef.current,
         signal: controller.signal,
         onEvent: (ev) => {
+          // Event đầu của BE: conversationId thực (đoạn mới vừa tạo / đoạn đang chat) -> lưu lại.
+          if (ev.type === 'conversation') {
+            setConversationId(ev.conversationId)
+            return
+          }
           // token = mẩu chữ bản thảo bài luận -> gõ vào PANEL SUY NGHĨ (bong bóng 'essay'
           // đang mở), KHÔNG vào box chat. (BE tua cả cụm token ngay trước `done`.)
           if (ev.type === 'token' && ev.is_partial) {
@@ -360,6 +382,62 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     }
   }
 
+  // --- Lịch sử hội thoại ---
+  const refreshHistory = async () => {
+    try {
+      setConversations(await listConversations())
+    } catch {
+      /* chưa đăng nhập / lỗi mạng -> để danh sách rỗng */
+    }
+  }
+
+  const handleToggleHistory = () => {
+    setHistoryOpen((v) => {
+      const next = !v
+      if (next) refreshHistory()
+      return next
+    })
+  }
+
+  // Đoạn chat mới: quên conversationId để lượt gửi sau BE tạo đoạn mới; reset về lời chào.
+  const handleNewChat = () => {
+    if (isTyping) return
+    setConversationId(null)
+    setMessages([greetingFor(work)])
+    setThinkingIndex(null)
+    setHistoryOpen(false)
+  }
+
+  // Mở lại 1 đoạn cũ: nạp transcript từ BE (BE cũng seed lại AI để chat tiếp).
+  const handleLoadConversation = async (id) => {
+    if (isTyping) return
+    try {
+      const detail = await openConversation(id)
+      setConversationId(detail.id)
+      const loaded = (detail.messages || []).map((m) => ({
+        role:
+          String(m.role).toLowerCase() === 'assistant' ? 'assistant' : 'user',
+        content: m.content,
+      }))
+      setMessages(loaded.length ? loaded : [greetingFor(work)])
+      setThinkingIndex(null)
+      setHistoryOpen(false)
+    } catch {
+      /* lỗi -> giữ nguyên màn hình hiện tại */
+    }
+  }
+
+  const handleDeleteConversation = async (id, e) => {
+    e.stopPropagation()
+    try {
+      await deleteConversation(id)
+      setConversations((prev) => prev.filter((c) => c.id !== id))
+      if (conversationIdRef.current === id) handleNewChat()
+    } catch {
+      /* ignore */
+    }
+  }
+
   if (!isOpen) return null
 
   // Chỉ model streaming mới hủy được giữa chừng (2 model blocking không có kết nối để đóng).
@@ -413,6 +491,25 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
           </div>
           <div className="flex items-center gap-2 bg-white/60 backdrop-blur-md rounded-full p-1 border border-[#83746d]/10 shadow-sm">
             <button
+              onClick={handleNewChat}
+              className="p-2 rounded-full hover:bg-white transition-all text-[#83746d] hover:text-[#412311]"
+              title="Đoạn chat mới"
+            >
+              <Plus size={16} />
+            </button>
+            <button
+              onClick={handleToggleHistory}
+              className={`p-2 rounded-full hover:bg-white transition-all ${
+                historyOpen
+                  ? 'text-[#ab3429] bg-white'
+                  : 'text-[#83746d] hover:text-[#412311]'
+              }`}
+              title="Lịch sử trò chuyện"
+            >
+              <History size={16} />
+            </button>
+            <div className="w-[1px] h-4 bg-[#83746d]/20 mx-0.5"></div>
+            <button
               onClick={() => setIsExpanded(!isExpanded)}
               className="p-2 rounded-full hover:bg-white transition-all text-[#83746d] hover:text-[#412311]"
               title={isExpanded ? 'Thu nhỏ' : 'Mở rộng'}
@@ -429,6 +526,53 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
             </button>
           </div>
         </div>
+
+        {/* Dropdown lịch sử hội thoại */}
+        {historyOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-30"
+              onClick={() => setHistoryOpen(false)}
+            />
+            <div className="absolute right-6 top-[96px] w-[300px] max-h-[360px] overflow-y-auto bg-white/95 backdrop-blur-xl rounded-2xl shadow-[0_12px_40px_rgba(65,35,17,0.18)] border border-[#83746d]/15 z-40 p-1.5 custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="px-3 py-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#83746d]">
+                Lịch sử trò chuyện
+              </div>
+              {conversations.length === 0 ? (
+                <div className="px-3 py-4 text-[12.5px] text-[#83746d]">
+                  Chưa có đoạn hội thoại nào.
+                </div>
+              ) : (
+                conversations.map((c) => (
+                  <div
+                    key={c.id}
+                    onClick={() => handleLoadConversation(c.id)}
+                    className={`group flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer transition-all ${
+                      activeConversationId === c.id
+                        ? 'bg-[#ab3429]/[0.08]'
+                        : 'hover:bg-[#83746d]/[0.08]'
+                    }`}
+                  >
+                    <History
+                      size={14}
+                      className="text-[#83746d] flex-shrink-0"
+                    />
+                    <span className="flex-1 min-w-0 truncate text-[13px] text-[#412311]">
+                      {c.title || 'Đoạn chat'}
+                    </span>
+                    <span
+                      onClick={(e) => handleDeleteConversation(c.id, e)}
+                      title="Xóa"
+                      className="opacity-0 group-hover:opacity-100 p-1 rounded-lg hover:bg-[#ab3429]/10 text-[#83746d] hover:text-[#ab3429] transition-all"
+                    >
+                      <Trash2 size={13} />
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
+        )}
 
         {/* Thanh chọn Model (giống bộ chọn model của Claude/Gemini) */}
         <div className="relative px-6 py-3 bg-white/30 backdrop-blur-md border-b border-[#83746d]/10 z-30 flex-shrink-0">
