@@ -244,3 +244,11 @@ export const openConversation = async (conversationId) =>
 /** Xóa 1 đoạn hội thoại. */
 export const deleteConversation = async (conversationId) =>
   apiClient.delete(`/v1/chat/conversations/${conversationId}`)
+
+/**
+ * Dừng luồng stream đang chạy của 1 đoạn: BE huỷ AI (đóng kết nối BE↔AI -> Ollama dừng) và
+ * KHÔNG lưu câu trả lời. FE gọi cái này rồi mới abort fetch (đóng FE↔BE). Nếu KHÔNG gọi (chỉ
+ * rớt mạng) thì BE vẫn đọc nốt và lưu final message.
+ */
+export const stopStream = async (conversationId) =>
+  apiClient.post(`/v1/chat/conversations/${conversationId}/stop`)

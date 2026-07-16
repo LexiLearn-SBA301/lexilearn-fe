@@ -18,6 +18,7 @@ import {
 import {
   sendChatMessage,
   streamChat,
+  stopStream,
   formatRichText,
   CHAT_MODELS,
   DEFAULT_CHAT_MODEL,
@@ -404,6 +405,11 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   // Dừng lượt streaming đang chạy: abort fetch -> backend cancel luôn workflow deep
   // (LangGraph hủy node đang chạy, request tới Ollama bị hủy theo).
   const handleStop = () => {
+    // Báo BE huỷ THẬT (đóng BE↔AI -> Ollama dừng, KHÔNG lưu câu trả lời) rồi mới abort fetch.
+    // Có conversationId mới gọi được; chưa có (rớt cửa sổ <1s đầu) thì chỉ abort -> BE coi như
+    // rớt tạm thời và vẫn lưu final. best-effort: lỗi /stop không được chặn việc dừng UI.
+    const id = conversationIdRef.current
+    if (id) stopStream(id).catch(() => {})
     abortRef.current?.abort()
     abortRef.current = null
   }
