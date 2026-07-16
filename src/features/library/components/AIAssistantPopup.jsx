@@ -14,6 +14,7 @@ import {
   History,
   Plus,
   Trash2,
+  Lock,
 } from 'lucide-react'
 import {
   sendChatMessage,
@@ -392,6 +393,12 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
         setThinkingIndex(null)
         setHistoryOpen(false)
         setMessages([greetingFor(work)])
+        // Đang dùng model cần token mà đăng xuất -> về model mặc định, tránh gửi rồi dính 401.
+        setSelectedModel((prev) =>
+          CHAT_MODELS.find((m) => m.id === prev)?.requiresAuth
+            ? DEFAULT_CHAT_MODEL
+            : prev,
+        )
       }),
     [work],
   )
@@ -523,38 +530,55 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
           >
             {CHAT_MODELS.map((model) => {
               const isActive = model.id === selectedModel
+              // Model cần token (Trạng Nguyên): khách chưa đăng nhập -> làm mờ, khoá chọn
+              // và đổi mô tả thành lời mời đăng nhập thay vì để họ chọn rồi dính 401.
+              const isLocked = model.requiresAuth && !isAuthenticated
               return (
                 <button
                   key={model.id}
+                  disabled={isLocked}
                   onClick={() => {
                     setSelectedModel(model.id)
                     setIsModelOpen(false)
                   }}
                   className={`w-full flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-left transition-all ${
-                    isActive
-                      ? 'bg-[#ab3429]/[0.08]'
-                      : 'hover:bg-[#83746d]/[0.08]'
+                    isLocked
+                      ? 'opacity-45 cursor-not-allowed'
+                      : isActive
+                        ? 'bg-[#ab3429]/[0.08]'
+                        : 'hover:bg-[#83746d]/[0.08]'
                   }`}
                 >
-                  <Cpu
-                    size={16}
-                    className={`mt-0.5 flex-shrink-0 ${
-                      isActive ? 'text-[#ab3429]' : 'text-[#83746d]'
-                    }`}
-                  />
+                  {isLocked ? (
+                    <Lock
+                      size={16}
+                      className="mt-0.5 flex-shrink-0 text-[#83746d]"
+                    />
+                  ) : (
+                    <Cpu
+                      size={16}
+                      className={`mt-0.5 flex-shrink-0 ${
+                        isActive ? 'text-[#ab3429]' : 'text-[#83746d]'
+                      }`}
+                    />
+                  )}
                   <div className="flex-1 min-w-0">
                     <span
                       className={`block text-[13px] font-bold ${
-                        isActive ? 'text-[#ab3429]' : 'text-[#412311]'
+                        isActive && !isLocked
+                          ? 'text-[#ab3429]'
+                          : 'text-[#412311]'
                       }`}
                     >
                       {model.label}
                     </span>
                     <span className="block text-[11px] text-[#83746d] mt-0.5 leading-snug">
-                      {model.description}
+                      {isLocked
+                        ? 'Đăng nhập để trải nghiệm'
+                        : model.description}
                     </span>
                   </div>
-                  {isActive && (
+                  {isActive && !isLocked && (
                     <Check
                       size={16}
                       className="text-[#ab3429] mt-0.5 flex-shrink-0"

@@ -54,6 +54,7 @@ export const CHAT_MODELS = [
       'Phân tích sâu — hội đồng tranh luận, hiện quá trình tư duy realtime',
     endpoint: '/chat/stream',
     streaming: true,
+    requiresAuth: true, // BE bắt buộc token -> khách chưa đăng nhập không gọi được
   },
 ]
 
