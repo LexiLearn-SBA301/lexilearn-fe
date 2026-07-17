@@ -15,8 +15,6 @@ import {
   Plus,
   Trash2,
   Lock,
-  MessagesSquare,
-  Check as CheckIcon,
 } from 'lucide-react'
 import {
   sendChatMessage,
@@ -108,6 +106,10 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   const [humanTurns, setHumanTurns] = useState(0)
   const [debateSending, setDebateSending] = useState(false)
   const [debateError, setDebateError] = useState(null)
+  // Chỉ luồng deep mới có hội đồng để tranh luận cùng. Supervisor chốt route rồi mới bắn
+  // event `route` -> trước đó chưa biết, nên KHÔNG mời. Thiếu cờ này thì nút hiện cả ở
+  // lượt route=factual, bấm vào chẳng có tác dụng gì.
+  const [isDeepRun, setIsDeepRun] = useState(false)
   // Index bong bóng assistant của lượt stream hiện tại -> tự bung panel suy nghĩ khi tới
   // lượt người học (không bung thì họ chẳng thấy lời mời lẫn luận điểm để phản biện).
   const streamIndexRef = useRef(null)
@@ -118,6 +120,7 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
     setAwaitHuman(null)
     setHumanTurns(0)
     setDebateError(null)
+    setIsDeepRun(false)
   }
 
   // Trạng thái đăng nhập: có accessToken = đã đăng nhập. Lịch sử trò chuyện là dữ liệu
@@ -243,7 +246,13 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
             startDraft()
             return
           }
-          // Hội đồng đã bắt đầu -> khoá nút xin tham gia (tín hiệu điều khiển, không hiện
+          // Supervisor vừa chốt hướng xử lý. Chỉ 'deep_analysis' mới có hội đồng tranh
+          // luận -> đây là lúc nút "Tranh luận cùng AI" được phép hiện.
+          if (ev.type === 'route') {
+            setIsDeepRun((ev.payload?.route ?? ev.content) === 'deep_analysis')
+            return
+          }
+          // Hội đồng đã bắt đầu -> ẩn nút xin tham gia (tín hiệu điều khiển, không hiện
           // trên timeline).
           if (ev.type === 'debate_lock') {
             setDebateLocked(true)
@@ -613,10 +622,15 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
   const canStop =
     isTyping && !!CHAT_MODELS.find((m) => m.id === selectedModel)?.streaming
 
-  // Cửa sổ bấm "Tranh luận cùng AI" = từ lúc BE cấp conversationId tới lúc hội đồng khai
-  // mạc. Chỉ luồng deep (streaming) mới có hội đồng để tranh luận cùng.
+  // Cửa sổ bấm "Tranh luận cùng AI": từ lúc supervisor chốt route=deep tới lúc hội đồng
+  // khai mạc (debate_lock). Cần cả conversationId (AI gắn cờ theo thread) — chưa có thì
+  // chưa bấm được. Ngoài cửa sổ này nút biến mất thay vì để đó cho bấm hụt.
   const canOptinDebate =
-    canStop && !debateLocked && !!activeConversationId && !awaitHuman
+    canStop &&
+    isDeepRun &&
+    !debateLocked &&
+    !!activeConversationId &&
+    !awaitHuman
 
   const thinkingMsg = thinkingIndex != null ? messages[thinkingIndex] : null
 
@@ -780,6 +794,11 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
         debateError={debateError}
         onDebateSend={handleDebateSend}
         onDebateEnd={handleDebateEnd}
+        // Nút xin tranh luận sống trong header panel (cạnh nút đóng) — chỗ người dùng
+        // đang ngồi xem hội đồng chuẩn bị, tức đúng lúc cửa sổ bấm còn mở.
+        canOptinDebate={canOptinDebate}
+        debateOptedIn={debateOptedIn}
+        onDebateOptin={handleDebateOptin}
       />
 
       <div
@@ -998,35 +1017,6 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
                 </button>
               ),
             )}
-          </div>
-        )}
-
-        {/* Mời tranh luận cùng hội đồng — CHỈ sống trong cửa sổ từ lúc bắt đầu lượt deep tới
-            lúc hội đồng khai mạc (AI bắn `debate_lock`). Qua mốc đó thì bấm cũng vô nghĩa,
-            nên nút biến mất thay vì để đó cho bấm hụt. */}
-        {canOptinDebate && (
-          <div className="relative px-6 pt-3 z-10 flex-shrink-0">
-            <button
-              onClick={handleDebateOptin}
-              disabled={debateOptedIn}
-              className={`w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border text-[12px] font-bold transition-all ${
-                debateOptedIn
-                  ? 'bg-[#ab3429]/[0.07] border-[#ab3429]/25 text-[#ab3429] cursor-default'
-                  : 'bg-white border-[#83746d]/25 text-[#412311] hover:border-[#ab3429] hover:text-[#ab3429] hover:bg-[#ab3429]/[0.04] shadow-sm'
-              }`}
-            >
-              {debateOptedIn ? (
-                <>
-                  <CheckIcon size={14} />
-                  Đã ghi nhận — hội đồng sẽ mời bạn phát biểu
-                </>
-              ) : (
-                <>
-                  <MessagesSquare size={14} />
-                  Tranh luận cùng AI
-                </>
-              )}
-            </button>
           </div>
         )}
 

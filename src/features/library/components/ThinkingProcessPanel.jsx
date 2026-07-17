@@ -21,6 +21,8 @@ import {
   Hand,
   Send,
   CornerDownLeft,
+  MessagesSquare,
+  Check,
 } from 'lucide-react'
 import {
   getEventUi,
@@ -441,16 +443,21 @@ const EssayDraftBubble = ({ ev }) => {
  * Khung soạn phát biểu của người học — hiện khi hội đồng tạm dừng chờ (event await_human).
  *
  * Vòng 1: ô text tự do (nêu luận điểm của mình -> 4 critic sẽ bắt bẻ lại ở vòng 2).
- * Vòng 2: phải bấm "Trả lời" trên một luận điểm trước, rồi chọn quan điểm và gõ nội dung —
- *         phản biện thì bắt buộc phải nhắm vào một luận điểm cụ thể.
+ * Vòng 2: chọn nhà phê bình (bấm = cuộn màn hình tới phát biểu của họ để vừa đọc vừa viết)
+ *         -> chọn luận điểm cụ thể của họ -> chọn quan điểm -> gõ.
+ *         Phải xuống tận luận điểm vì backend nhắm theo `target_arg_id`, không nhắn theo
+ *         critic: mỗi nhà phê bình có 2–4 luận điểm, gửi thiếu id là 400.
  * Enter gửi, Shift+Enter xuống dòng (giống ô chat chính).
  */
 const HumanComposer = ({
   round,
+  argsByCritic, // { variant: [{ argId, point }] } — luận điểm vòng 1 để nhắm tới
+  pickedCritic,
+  onPickCritic, // bấm nhà phê bình -> chọn + cuộn tới phát biểu của họ
   target,
   stance,
   onStanceChange,
-  onClearTarget,
+  onPickArg,
   turnsLeft,
   hasSpoken,
   sending,
@@ -462,8 +469,9 @@ const HumanComposer = ({
   const inputRef = useRef(null)
   const needTarget = round === 2 && !target
   const canSend = text.trim() && !needTarget && !sending
+  const critics = Object.keys(argsByCritic ?? {})
 
-  // Bấm "Trả lời" trên luận điểm -> nhảy con trỏ xuống ô nhập luôn, khỏi phải click lần nữa.
+  // Chọn xong luận điểm -> nhảy con trỏ xuống ô nhập luôn, khỏi phải click thêm lần nữa.
   useEffect(() => {
     if (target) inputRef.current?.focus()
   }, [target])
@@ -490,28 +498,87 @@ const HumanComposer = ({
           </span>
         </div>
 
-        {/* Vòng 2: chip cho biết đang trả lời luận điểm nào + chọn quan điểm */}
+        {/* Vòng 2 — 3 nấc: ai → luận điểm nào → quan điểm gì */}
         {round === 2 && (
-          <div className="px-3.5 pt-2.5 flex flex-wrap items-center gap-1.5">
-            {target ? (
-              <>
-                <button
-                  type="button"
-                  onClick={onClearTarget}
-                  title="Bỏ chọn luận điểm"
-                  style={{
-                    color: target.color,
-                    borderColor: `${target.color}66`,
-                    backgroundColor: `${target.color}12`,
-                  }}
-                  className="flex items-center gap-1 max-w-[60%] border rounded-full pl-2 pr-1.5 py-0.5"
-                >
-                  <Reply size={10} />
-                  <span className="text-[10.5px] font-bold truncate">
-                    {target.name}: {target.point}
-                  </span>
-                  <X size={11} className="flex-shrink-0 opacity-70" />
-                </button>
+          <div className="px-3.5 pt-2.5 space-y-2">
+            {/* Nấc 1: nhà phê bình. Bấm = chọn + CUỘN tới phát biểu của họ -> vừa đọc vừa viết. */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-[#83746d] mr-0.5">
+                Phản biện
+              </span>
+              {critics.map((v) => {
+                const meta = CRITIC_META[v] ?? { name: v, color: '#83746d' }
+                const Icon = VARIANT_ICON[v] ?? Sparkles
+                const on = pickedCritic === v
+                return (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => onPickCritic(v)}
+                    title={`Xem phát biểu của ${meta.name}`}
+                    style={
+                      on
+                        ? {
+                            backgroundColor: meta.color,
+                            borderColor: meta.color,
+                          }
+                        : { borderColor: `${meta.color}66`, color: meta.color }
+                    }
+                    className={`flex items-center gap-1 text-[10.5px] font-bold border rounded-full px-2 py-[3px] transition-all ${
+                      on ? 'text-white shadow-sm' : 'hover:bg-black/[0.03]'
+                    }`}
+                  >
+                    <Icon size={11} />
+                    {meta.name}
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Nấc 2: luận điểm CỦA nhà phê bình vừa chọn (backend nhắm theo arg_id). */}
+            {pickedCritic && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-[#83746d] mr-0.5">
+                  Luận điểm
+                </span>
+                {(argsByCritic[pickedCritic] ?? []).map((a, i) => {
+                  const on = target?.argId === a.argId
+                  const color = CRITIC_META[pickedCritic]?.color ?? '#83746d'
+                  return (
+                    <button
+                      key={a.argId}
+                      type="button"
+                      onClick={() => onPickArg(a.argId)}
+                      title={a.point}
+                      style={
+                        on
+                          ? {
+                              backgroundColor: `${color}18`,
+                              borderColor: color,
+                              color,
+                            }
+                          : { borderColor: '#83746d55' }
+                      }
+                      className={`flex items-center gap-1 max-w-[240px] text-[10.5px] border rounded-full px-2 py-[3px] transition-all ${
+                        on
+                          ? 'font-bold'
+                          : 'text-[#5b4b42] hover:bg-black/[0.03]'
+                      }`}
+                    >
+                      <span className="font-black opacity-60">{i + 1}</span>
+                      <span className="truncate">{a.point}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Nấc 3: quan điểm — chỉ hỏi khi đã biết nhắm vào đâu. */}
+            {target && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-[#83746d] mr-0.5">
+                  Quan điểm
+                </span>
                 {STANCE_CHOICES.map((s) => (
                   <button
                     key={s}
@@ -537,11 +604,7 @@ const HumanComposer = ({
                     {STANCE[s].label}
                   </button>
                 ))}
-              </>
-            ) : (
-              <span className="text-[11px] text-[#83746d] italic">
-                Bấm “Trả lời” ở một luận điểm phía trên để phản biện.
-              </span>
+              </div>
             )}
           </div>
         )}
@@ -561,7 +624,7 @@ const HumanComposer = ({
             rows={1}
             placeholder={
               needTarget
-                ? 'Chọn luận điểm muốn phản biện…'
+                ? 'Chọn nhà phê bình và luận điểm muốn phản biện…'
                 : round === 1
                   ? 'Quan điểm của bạn về câu hỏi này…'
                   : 'Vì sao bạn nghĩ vậy? Dẫn chứng trong văn bản…'
@@ -589,16 +652,19 @@ const HumanComposer = ({
           </p>
         )}
 
-        <div className="flex items-center justify-between gap-2 px-3.5 py-1.5 bg-[#f5efe4] border-t border-[#83746d]/12">
+        <div className="flex items-center justify-between gap-3 px-3.5 py-2 bg-[#f5efe4] border-t border-[#83746d]/12">
           <span className="flex items-center gap-1 text-[10px] text-[#83746d]">
             <CornerDownLeft size={10} /> Enter để gửi · Shift+Enter xuống dòng
           </span>
-          {/* Cùng một tín hiệu tới backend (message rỗng); chỉ đổi nhãn theo việc đã nói hay chưa */}
+          {/* Cùng một tín hiệu tới backend (message rỗng); chỉ đổi nhãn theo việc đã nói hay
+              chưa. Viền đỏ (không tô đặc) để nổi ngang nút Gửi mà vẫn đọc ra là hành động
+              KHÁC — tô đặc cả hai thì dễ bấm nhầm cái kết thúc lượt. */}
           <button
             type="button"
             onClick={onEnd}
-            className="text-[10.5px] font-bold text-[#83746d] hover:text-[#ab3429] underline underline-offset-2 transition-colors"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg border-2 border-[#ab3429] text-[#ab3429] text-[11.5px] font-bold hover:bg-[#ab3429] hover:text-white active:scale-95 transition-all flex-shrink-0"
           >
+            <X size={13} />
             {hasSpoken ? 'Kết thúc phản biện' : 'Bỏ qua lượt này'}
           </button>
         </div>
@@ -640,6 +706,7 @@ const buildArgIndex = (events) => {
     for (const a of ev.payload?.arguments ?? []) {
       if (!a.arg_id) continue
       index[a.arg_id] = {
+        variant,
         name: CRITIC_META[variant]?.name ?? ev.actor,
         color: CRITIC_META[variant]?.color ?? '#83746d',
         point: a.point,
@@ -647,6 +714,20 @@ const buildArgIndex = (events) => {
     }
   }
   return index
+}
+
+/**
+ * Gom luận điểm vòng 1 theo nhà phê bình -> { variant: [{argId, point}] }.
+ * BỎ luận điểm của chính người học: tự phản biện mình là vô nghĩa (backend cũng chặn,
+ * xem debate_session._validate).
+ */
+const groupArgsByCritic = (argIndex) => {
+  const byCritic = {}
+  for (const [argId, meta] of Object.entries(argIndex)) {
+    if (meta.variant === 'human') continue
+    ;(byCritic[meta.variant] ??= []).push({ argId, point: meta.point })
+  }
+  return byCritic
 }
 
 /**
@@ -670,27 +751,35 @@ export const ThinkingProcessPanel = ({
   debateError = null,
   onDebateSend, // (text, { targetArgId, stance }) => void
   onDebateEnd, // () => void  (Bỏ qua / Kết thúc — cùng 1 tín hiệu)
+  canOptinDebate = false, // còn trong cửa sổ bấm (deep + hội đồng chưa khai mạc)
+  debateOptedIn = false,
+  onDebateOptin,
 }) => {
   const endRef = useRef(null)
   // Row đang được highlight sau khi bấm "Trả lời ..." để nhảy tới.
   const [jumpId, setJumpId] = useState(null)
-  // Vòng 2: luận điểm đang được nhắm tới + quan điểm đã chọn.
+  // Vòng 2: nhà phê bình đang chọn -> luận điểm đang nhắm -> quan điểm.
+  const [pickedCritic, setPickedCritic] = useState(null)
   const [replyTo, setReplyTo] = useState(null)
   const [stance, setStance] = useState('disagree')
 
-  // Cuộn xuống cuối khi có event mới (lúc đang stream) hoặc khi mới mở.
+  // Cuộn xuống cuối khi có event mới (lúc đang stream) hoặc khi mới mở. Lúc đang chờ người
+  // học thì THÔI tự cuộn: họ vừa bấm xem phát biểu của 1 critic để đọc mà mình giật xuống
+  // đáy thì đúng là phá.
   useEffect(() => {
-    if (open) endRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [events, open, streaming])
+    if (open && !awaitHuman)
+      endRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [events, open, streaming, awaitHuman])
 
-  // Sang vòng khác / hết lượt chờ -> quên luận điểm đang nhắm, tránh gửi nhầm id của
-  // vòng trước sang vòng sau (backend sẽ trả 400, nhưng đừng để tới đó). Điều chỉnh ngay
-  // trong lúc render (pattern chính thức của React cho "state phụ thuộc prop") thay vì
-  // useEffect — effect sẽ render thừa một nhịp với luận điểm cũ còn dính.
+  // Sang vòng khác / hết lượt chờ -> quên lựa chọn đang dở, tránh gửi nhầm id của vòng
+  // trước sang vòng sau (backend sẽ trả 400, nhưng đừng để tới đó). Điều chỉnh ngay trong
+  // lúc render (pattern chính thức của React cho "state phụ thuộc prop") thay vì useEffect
+  // — effect sẽ render thừa một nhịp với luận điểm cũ còn dính.
   const activeRound = awaitHuman?.round ?? null
   const [prevRound, setPrevRound] = useState(activeRound)
   if (prevRound !== activeRound) {
     setPrevRound(activeRound)
+    setPickedCritic(null)
     setReplyTo(null)
     setStance('disagree')
   }
@@ -711,6 +800,7 @@ export const ThinkingProcessPanel = ({
   // Chỉ cho reply khi hội đồng ĐANG chờ ở vòng 2 (vòng 1 là nêu luận điểm, không nhắm ai).
   const canReplyNow = Boolean(awaitHuman) && awaitHuman.round === 2
   const argIndex = canReplyNow ? buildArgIndex(visible) : {}
+  const argsByCritic = canReplyNow ? groupArgsByCritic(argIndex) : {}
   const target = replyTo ? { ...argIndex[replyTo], argId: replyTo } : null
 
   // Chèn vạch ngăn "Vòng N" mỗi khi vòng tranh luận thay đổi.
@@ -742,8 +832,16 @@ export const ThinkingProcessPanel = ({
         onJump: scrollToId,
         highlighted: jumpId === rowId,
         // Nút "Trả lời" CHỈ mọc ở vòng 2 và chỉ trên luận điểm vòng 1 (Rebuttal không có
-        // id riêng nên không thể bị nhắm tới).
-        onReplyTo: canReplyNow && round === 1 ? setReplyTo : undefined,
+        // id riêng nên không thể bị nhắm tới). Lối tắt song song với hàng nút dưới khung
+        // soạn -> phải set CẢ pickedCritic, nếu không hàng chip luận điểm bên dưới lại
+        // hiện của người khác trong khi đang nhắm luận điểm này.
+        onReplyTo:
+          canReplyNow && round === 1
+            ? (argId) => {
+                setPickedCritic(ui.variant)
+                setReplyTo(argId)
+              }
+            : undefined,
         replyingTo: replyTo,
       }
     }
@@ -757,6 +855,11 @@ export const ThinkingProcessPanel = ({
     // Chỉ ghi nhận bong bóng Vòng 1 làm đích nhảy tới.
     if (ev.type === 'critic_turn' && round === 1) r1Index[ui.variant] = i
   })
+
+  // variant -> id row phát biểu vòng 1, để hàng nút nhà phê bình cuộn tới đúng chỗ.
+  const r1Rows = Object.fromEntries(
+    Object.entries(r1Index).map(([v, i]) => [v, `think-row-${i}`]),
+  )
 
   // Chừa bề rộng đúng bằng popup để lớp tối dừng lại ở viền khung chat chính.
   const rightInset = isExpanded
@@ -798,13 +901,46 @@ export const ThinkingProcessPanel = ({
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-full bg-white/15 backdrop-blur-md border border-white/20 hover:bg-white/30 text-white/90 shadow-lg transition-all"
-            title="Đóng"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Xin tranh luận cùng hội đồng. Chỉ sống trong cửa sổ từ lúc chốt route=deep
+                tới lúc hội đồng khai mạc (event debate_lock) -> qua mốc đó là BIẾN MẤT,
+                vì bấm cũng vô nghĩa (AI đã đọc & xoá cờ rồi). */}
+            {canOptinDebate && (
+              <button
+                onClick={onDebateOptin}
+                disabled={debateOptedIn}
+                title={
+                  debateOptedIn
+                    ? 'Hội đồng sẽ mời bạn phát biểu'
+                    : 'Cùng tranh luận với hội đồng'
+                }
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-full backdrop-blur-md border text-[11.5px] font-bold shadow-lg transition-all ${
+                  debateOptedIn
+                    ? 'bg-[#22c55e] border-[#22c55e] text-white cursor-default'
+                    : 'bg-white/15 border-white/25 text-white/90 hover:bg-white/30'
+                }`}
+              >
+                {debateOptedIn ? (
+                  <>
+                    <Check size={13} />
+                    Đã ghi danh
+                  </>
+                ) : (
+                  <>
+                    <MessagesSquare size={13} />
+                    Tranh luận cùng AI
+                  </>
+                )}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="p-2 rounded-full bg-white/15 backdrop-blur-md border border-white/20 hover:bg-white/30 text-white/90 shadow-lg transition-all"
+              title="Đóng"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Danh sách bong bóng nổi trên nền tối. Bấm vùng tối trống -> đóng. */}
@@ -830,10 +966,19 @@ export const ThinkingProcessPanel = ({
           {awaitHuman && (
             <HumanComposer
               round={awaitHuman.round}
+              argsByCritic={argsByCritic}
+              pickedCritic={pickedCritic}
+              onPickCritic={(v) => {
+                setPickedCritic(v)
+                setReplyTo(null) // đổi người -> luận điểm cũ không còn thuộc về ai
+                // Cuộn tới phát biểu vòng 1 của họ: mục đích của hàng nút này là để vừa
+                // ĐỌC lý lẽ vừa viết phản biện, không phải chỉ để chọn.
+                scrollToId(r1Rows[v])
+              }}
               target={target}
               stance={stance}
               onStanceChange={setStance}
-              onClearTarget={() => setReplyTo(null)}
+              onPickArg={setReplyTo}
               turnsLeft={(awaitHuman.max_turns ?? 10) - humanTurns}
               hasSpoken={humanTurns > 0}
               sending={debateSending}
