@@ -157,7 +157,14 @@ export const formatRichText = (text = '') =>
 //  - route: chỉ là mã kỹ thuật, trùng ý với intent
 //  - error: hiện ở bong bóng lỗi riêng
 //  - token: mẩu chữ đang gõ dở, nối thẳng vào câu trả lời
-const HIDDEN_STREAM_TYPES = new Set(['done', 'route', 'error', 'token'])
+//  - debate_lock: tín hiệu điều khiển (khoá nút "Tranh luận cùng AI"), không phải bước tư duy
+const HIDDEN_STREAM_TYPES = new Set([
+  'done',
+  'route',
+  'error',
+  'token',
+  'debate_lock',
+])
 
 // True nếu event nên bị ẩn khỏi timeline. Dùng chung cho cả panel lẫn chip đếm bước
 // để số "bước" luôn khớp với số bong bóng thực sự hiển thị.
@@ -253,3 +260,31 @@ export const deleteConversation = async (conversationId) =>
  */
 export const stopStream = async (conversationId) =>
   apiClient.post(`/v1/chat/conversations/${conversationId}/stop`)
+
+// ---------------------------------------------------------------------------
+// Tranh luận cùng hội đồng AI (qua BE — FE không chạm AI)
+// ---------------------------------------------------------------------------
+
+/**
+ * Xin tham gia tranh luận ở lượt ĐANG chạy. Cửa sổ bấm = lúc AI chuẩn bị ngữ cảnh; tới
+ * lúc hội đồng bắt đầu thì AI bắn event `debate_lock` và nút bị khoá.
+ */
+export const debateOptin = async (conversationId) =>
+  apiClient.post(`/v1/chat/conversations/${conversationId}/debate/optin`)
+
+/**
+ * Gửi 1 lượt phát biểu khi hội đồng đang chờ. Đi trên request RIÊNG (SSE không nhận được
+ * chiều lên); phản hồi của hội đồng chảy về qua chính stream SSE đang mở, không qua đây.
+ *
+ * message=null -> Bỏ qua / Kết thúc phản biện (cùng một tín hiệu).
+ * Vòng 2 bắt buộc targetArgId + stance; sai id -> BE trả 400.
+ */
+export const debateReply = async (
+  conversationId,
+  { message = null, targetArgId = null, stance = null } = {},
+) =>
+  apiClient.post(`/v1/chat/conversations/${conversationId}/debate/reply`, {
+    message,
+    targetArgId,
+    stance,
+  })
