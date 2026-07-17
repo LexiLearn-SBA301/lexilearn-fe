@@ -258,6 +258,19 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
             setDebateLocked(true)
             return
           }
+          // Lưới an toàn cho việc khoá nút: `debate_lock` CHỈ được AI bắn khi người học đã
+          // ghi danh ĐÚNG LÚC (cờ opt-in còn sống khi node debate đọc). Ghi danh trễ hoặc
+          // không ghi danh -> KHÔNG có event đó, nút "Tranh luận cùng AI"/"Đã ghi danh" sẽ
+          // treo lại suốt lúc hội đồng đang nói. Vậy nên coi MỌI dấu hiệu hội đồng đã lên
+          // tiếng (critic_turn/bulletin/await_human) là mốc chốt: qua đây thì ghi danh đằng
+          // nào cũng trễ -> khoá nút. KHÔNG return: các event này vẫn phải chảy vào timeline.
+          if (
+            ev.type === 'critic_turn' ||
+            ev.type === 'bulletin' ||
+            ev.type === 'await_human'
+          ) {
+            setDebateLocked(true)
+          }
           // Tới lượt người học: mở ô nhập + tự bung panel (lời mời và các luận điểm cần
           // phản biện đều nằm trong panel, không bung thì họ không thấy gì để trả lời).
           if (ev.type === 'await_human') {
@@ -795,8 +808,12 @@ export const AIAssistantPopup = ({ isOpen, onClose, work, initialPrompt }) => {
         onDebateSend={handleDebateSend}
         onDebateEnd={handleDebateEnd}
         // Nút xin tranh luận sống trong header panel (cạnh nút đóng) — chỗ người dùng
-        // đang ngồi xem hội đồng chuẩn bị, tức đúng lúc cửa sổ bấm còn mở.
-        canOptinDebate={canOptinDebate}
+        // đang ngồi xem hội đồng chuẩn bị, tức đúng lúc cửa sổ bấm còn mở. GIỐNG ô nhập
+        // ở trên: nút CHỈ thuộc về bong bóng ĐANG stream. Mở lại panel của lượt chat CŨ
+        // (đã xong) trong lúc lượt MỚI đang chạy -> `canOptinDebate` (tính từ state stream
+        // hiện tại) vẫn true, nhưng ghi danh cho lượt cũ là vô nghĩa -> chặn bằng
+        // `thinkingMsg.streaming` để nút không lọt sang panel đã đóng.
+        canOptinDebate={thinkingMsg?.streaming ? canOptinDebate : false}
         debateOptedIn={debateOptedIn}
         onDebateOptin={handleDebateOptin}
       />
