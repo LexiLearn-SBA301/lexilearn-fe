@@ -23,7 +23,7 @@ export const ReviewSection = ({ workId, isFocusMode }) => {
     >
       <div className="flex items-center gap-3 mb-10">
         <div
-          className={`p-3 rounded-xl ${isFocusMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-600/10 text-blue-700'}`}
+          className={`p-3 rounded-xl ${isFocusMode ? 'bg-[#d4a373]/20 text-[#d4a373]' : 'bg-[#412311]/10 text-[#412311]'}`}
         >
           <Star size={24} />
         </div>
@@ -38,7 +38,7 @@ export const ReviewSection = ({ workId, isFocusMode }) => {
 
       {isLoading ? (
         <div className="py-10 flex justify-center">
-          <Loader2 className="animate-spin text-blue-500" size={32} />
+          <Loader2 className="animate-spin text-[#412311]" size={32} />
         </div>
       ) : isError || !data || data.content.length === 0 ? (
         <div className="text-center py-10 opacity-70 italic">
@@ -58,7 +58,7 @@ export const ReviewSection = ({ workId, isFocusMode }) => {
             >
               {review.title && (
                 <h4
-                  className={`text-xl font-bold mb-3 ${isFocusMode ? 'text-blue-400' : 'text-blue-800'}`}
+                  className={`text-xl font-bold mb-3 ${isFocusMode ? 'text-[#d4a373]' : 'text-[#2c170b]'}`}
                 >
                   {review.title}
                 </h4>
@@ -175,7 +175,7 @@ const ReviewForm = ({ workId, isFocusMode }) => {
         </p>
         <a
           href="/dang-nhap"
-          className="inline-block px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
+          className="inline-block px-6 py-2.5 bg-[#412311] text-white font-bold rounded-xl hover:bg-[#2c170b] transition-colors"
         >
           Đăng nhập ngay
         </a>
@@ -215,7 +215,7 @@ const ReviewForm = ({ workId, isFocusMode }) => {
       <h4 className="font-bold mb-4 flex items-center gap-2">
         <MessageSquarePlus
           size={20}
-          className={isFocusMode ? 'text-blue-400' : 'text-blue-600'}
+          className={isFocusMode ? 'text-[#d4a373]' : 'text-[#412311]'}
         />
         Gửi đánh giá của bạn
       </h4>
@@ -227,8 +227,8 @@ const ReviewForm = ({ workId, isFocusMode }) => {
             placeholder="Tiêu đề đánh giá (không bắt buộc)"
             className={`w-full px-4 py-3 rounded-xl border outline-none transition-all ${
               isFocusMode
-                ? 'bg-black/20 border-white/10 focus:border-blue-500 text-white placeholder-white/30'
-                : 'bg-surface-container-low border-outline-variant/30 focus:border-blue-500 text-on-surface'
+                ? 'bg-black/20 border-white/10 focus:border-[#d4a373] text-white placeholder-white/30'
+                : 'bg-surface-container-low border-outline-variant/30 focus:border-[#412311] text-on-surface'
             }`}
           />
           {errors.title && (
@@ -243,8 +243,8 @@ const ReviewForm = ({ workId, isFocusMode }) => {
             placeholder="Chia sẻ cảm nhận của bạn về tác phẩm này..."
             className={`w-full px-4 py-3 rounded-xl border outline-none transition-all resize-y ${
               isFocusMode
-                ? 'bg-black/20 border-white/10 focus:border-blue-500 text-white placeholder-white/30'
-                : 'bg-surface-container-low border-outline-variant/30 focus:border-blue-500 text-on-surface'
+                ? 'bg-black/20 border-white/10 focus:border-[#d4a373] text-white placeholder-white/30'
+                : 'bg-surface-container-low border-outline-variant/30 focus:border-[#412311] text-on-surface'
             }`}
           />
           {errors.content && (
@@ -258,7 +258,7 @@ const ReviewForm = ({ workId, isFocusMode }) => {
           <button
             type="submit"
             disabled={createReview.isPending}
-            className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+            className="px-6 py-2.5 bg-[#412311] text-white font-bold rounded-xl hover:bg-[#2c170b] transition-colors disabled:opacity-50 flex items-center gap-2"
           >
             {createReview.isPending ? (
               <Loader2 size={18} className="animate-spin" />
