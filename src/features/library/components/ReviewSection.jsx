@@ -81,7 +81,11 @@ export const ReviewSection = ({ workId, isFocusMode }) => {
                 <div className="flex items-center gap-2">
                   <Calendar size={16} />
                   <span>
-                    {new Date(review.approvedAt).toLocaleDateString('vi-VN')}
+                    {new Date(
+                      review.reviewedAt ||
+                        review.createdAt ||
+                        review.approvedAt,
+                    ).toLocaleDateString('vi-VN')}
                   </span>
                 </div>
               </div>
@@ -150,11 +154,10 @@ const ReviewForm = ({ workId, isFocusMode }) => {
   const onSubmit = async (data) => {
     try {
       await createReview.mutateAsync({ workId, data })
-      setSuccessMsg('Đánh giá của bạn đã được gửi và đang chờ kiểm duyệt.')
+      setSuccessMsg('Đánh giá của bạn đã được xuất bản công khai!')
       reset()
     } catch (err) {
       console.error(err)
-      // Check if it's "Already reviewed" error or similar
       const msg =
         err?.response?.data?.message || 'Có lỗi xảy ra khi gửi đánh giá.'
       alert(msg)
@@ -195,9 +198,9 @@ const ReviewForm = ({ workId, isFocusMode }) => {
         <p className="font-bold">{successMsg}</p>
         <button
           onClick={() => setSuccessMsg('')}
-          className="mt-3 text-sm underline opacity-80 hover:opacity-100"
+          className="mt-3 text-sm underline opacity-80 hover:opacity-100 font-medium"
         >
-          Gửi đánh giá khác (nếu hệ thống cho phép)
+          Viết thêm đánh giá khác
         </button>
       </div>
     )

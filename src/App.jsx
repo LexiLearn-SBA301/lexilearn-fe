@@ -23,7 +23,6 @@ import { AuthorAdminPage } from './features/author/pages/AuthorAdminPage'
 import { TagAdminPage } from './features/tag/pages/TagAdminPage'
 import { AdminRoute } from './components/common/AdminRoute'
 import { MyReviewsPage } from './features/library/pages/MyReviewsPage'
-import { AdminReviewPage } from './features/library/pages/AdminReviewPage'
 
 // Khởi tạo một instance của QueryClient
 const queryClient = new QueryClient()
@@ -69,10 +68,6 @@ export default function App() {
                   element={<WorkDetailAdminPage />}
                 />
                 <Route path="/admin/the" element={<TagAdminPage />} />
-                <Route
-                  path="/admin/duyet-review"
-                  element={<AdminReviewPage />}
-                />
               </Route>
             </Routes>
           </div>

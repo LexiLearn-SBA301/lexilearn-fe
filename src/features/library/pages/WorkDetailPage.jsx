@@ -31,8 +31,18 @@ export const WorkDetailPage = () => {
     )
 
   return (
-    <div className="bg-background min-h-screen font-body relative pb-16">
-      <div className="absolute inset-0 opacity-30 watermark-pattern pointer-events-none"></div>
+    <div className="bg-background min-h-screen font-body relative pb-16 overflow-hidden">
+      {work.coverUrl && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          <img
+            src={work.coverUrl}
+            alt=""
+            className="w-full h-[600px] md:h-[800px] object-cover opacity-35 select-none"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/60 to-background"></div>
+        </div>
+      )}
+      <div className="absolute inset-0 opacity-30 watermark-pattern pointer-events-none z-0"></div>
 
       <main className="max-w-5xl mx-auto px-6 py-8 relative z-10">
         <div className="mb-8">

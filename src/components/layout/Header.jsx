@@ -90,12 +90,6 @@ export const Header = () => {
             >
               Thẻ
             </Link>
-            <Link
-              to="/admin/duyet-review"
-              className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${location.pathname.includes('/admin/duyet-review') ? 'bg-[#ab3429] text-white shadow-sm' : 'text-on-surface-variant hover:text-primary'}`}
-            >
-              Đánh giá
-            </Link>
           </nav>
         ) : (
           /* 2. NẾU LÀ USER THÌ HIỆN NAV CŨ */

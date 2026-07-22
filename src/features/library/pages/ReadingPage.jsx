@@ -422,9 +422,21 @@ export const ReadingPage = () => {
           : 'bg-[#FAF3E7] text-[#2b211c]'
       }`}
     >
-      {/* Lớp Texture Nền */}
+      {/* Lớp Texture Nền & Background Hình tác phẩm */}
       {!isFocusMode && (
-        <div className="fixed inset-0 pointer-events-none z-0 opacity-30 mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')]"></div>
+        <>
+          {work?.coverUrl && (
+            <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
+              <img
+                src={work.coverUrl}
+                alt=""
+                className="w-full h-full object-cover opacity-35 select-none"
+              />
+              <div className="absolute inset-0 bg-gradient-to-b from-[#FAF3E7]/30 via-[#FAF3E7]/55 to-[#FAF3E7]/75"></div>
+            </div>
+          )}
+          <div className="fixed inset-0 pointer-events-none z-0 opacity-30 mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')]"></div>
+        </>
       )}
 
       <ReadingPageSidebar

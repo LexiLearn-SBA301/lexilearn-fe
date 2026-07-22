@@ -6,9 +6,6 @@ import {
   fetchMyReviewDetail,
   updateMyReview,
   deleteMyReview,
-  fetchAdminReviewRevisions,
-  fetchAdminReviewRevisionDetail,
-  moderateReviewRevision,
 } from '../../../services/review.service'
 
 // ---------------------------------------------------------
@@ -74,38 +71,6 @@ export const useDeleteMyReview = () => {
     mutationFn: deleteMyReview,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-reviews'] })
-      queryClient.invalidateQueries({ queryKey: ['public-reviews'] })
-    },
-  })
-}
-
-// ---------------------------------------------------------
-// ADMIN HOOKS
-// ---------------------------------------------------------
-export const useGetAdminReviewRevisions = (params = {}) => {
-  return useQuery({
-    queryKey: ['admin-review-revisions', params],
-    queryFn: () => fetchAdminReviewRevisions(params),
-  })
-}
-
-export const useGetAdminReviewRevisionDetail = (revisionId, enabled = true) => {
-  return useQuery({
-    queryKey: ['admin-review-revision-detail', revisionId],
-    queryFn: () => fetchAdminReviewRevisionDetail(revisionId),
-    enabled: !!revisionId && enabled,
-  })
-}
-
-export const useModerateReviewRevision = () => {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: moderateReviewRevision,
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['admin-review-revisions'] })
-      queryClient.invalidateQueries({
-        queryKey: ['admin-review-revision-detail', variables.revisionId],
-      })
       queryClient.invalidateQueries({ queryKey: ['public-reviews'] })
     },
   })
