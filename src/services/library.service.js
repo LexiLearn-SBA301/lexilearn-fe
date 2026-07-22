@@ -10,6 +10,17 @@ export const fetchWorkDetail = async (slug) => {
   return response.data.result
 }
 
+export const fetchGenres = async () => {
+  const response = await apiClient.get('/v1/works/genres')
+  return response.data.result
+}
+
+export const fetchSubGenres = async (genre) => {
+  const params = genre ? { genre } : {}
+  const response = await apiClient.get('/v1/works/sub-genres', { params })
+  return response.data.result
+}
+
 // ==========================================
 // ADMIN APIS
 // ==========================================

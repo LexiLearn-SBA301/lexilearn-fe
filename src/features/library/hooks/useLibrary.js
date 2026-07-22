@@ -2,10 +2,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   fetchWorks,
   fetchWorkDetail,
+  fetchGenres,
+  fetchSubGenres,
   createWork,
   updateWork,
   deleteWork,
 } from '../../../services/library.service'
+
 // Hook lấy danh sách Tác phẩm (Tự động fetch lại khi filters thay đổi)
 export const useWorks = (filters) => {
   return useQuery({
@@ -19,6 +22,22 @@ export const useWorkDetail = (slug) => {
     queryKey: ['work', slug],
     queryFn: () => fetchWorkDetail(slug),
     enabled: !!slug,
+  })
+}
+
+export const useGenres = () => {
+  return useQuery({
+    queryKey: ['genres'],
+    queryFn: fetchGenres,
+    staleTime: 1000 * 60 * 60, // 1 hour
+  })
+}
+
+export const useSubGenres = (genre) => {
+  return useQuery({
+    queryKey: ['sub-genres', genre],
+    queryFn: () => fetchSubGenres(genre),
+    staleTime: 1000 * 60 * 60,
   })
 }
 // --- ADMIN HOOKS ---
