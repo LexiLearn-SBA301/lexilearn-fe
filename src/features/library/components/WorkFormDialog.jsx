@@ -6,7 +6,12 @@ import {
   defaultWorkValues,
   currentYear,
 } from '../schemas/work.schema'
-import { useCreateWork, useUpdateWork } from '../hooks/useLibrary'
+import {
+  useCreateWork,
+  useUpdateWork,
+  useGenres,
+  useSubGenres,
+} from '../hooks/useLibrary'
 import { useAuthors } from '../../author/hooks/useAuthor'
 import { useTags } from '../../tag/hooks/useTag'
 import { X, Loader2, Save } from 'lucide-react'
@@ -28,12 +33,18 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(workSchema),
     defaultValues: defaultWorkValues,
     mode: 'onChange',
   })
+
+  const selectedGenre = watch('genre')
+  const { data: genresData } = useGenres()
+  const { data: subGenresData } = useSubGenres(selectedGenre)
 
   useEffect(() => {
     if (isOpen) {
@@ -199,23 +210,41 @@ export const WorkFormDialog = ({ isOpen, onClose, workData }) => {
                   Thể loại chính
                 </label>
                 <select
-                  {...register('genre')}
+                  {...register('genre', {
+                    onChange: () => setValue('subGenre', ''),
+                  })}
                   className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
                 >
-                  <option value="Truyện ngắn">Truyện ngắn</option>
-                  <option value="Tiểu thuyết">Tiểu thuyết</option>
-                  <option value="Thơ ca">Thơ ca</option>
+                  <option value="">-- Chọn thể loại chính --</option>
+                  {genresData?.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
                 </select>
+                {errors.genre && (
+                  <p className="text-xs text-[#ab3429]">
+                    {errors.genre.message}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
                 <label className="text-sm font-bold text-primary">
                   Thể loại phụ
                 </label>
-                <input
+                <select
                   {...register('subGenre')}
                   className="w-full bg-white border border-outline-variant/40 rounded-xl px-4 py-3"
-                />
+                  disabled={!selectedGenre}
+                >
+                  <option value="">-- Chọn thể loại phụ (nếu có) --</option>
+                  {subGenresData?.map((sg) => (
+                    <option key={sg} value={sg}>
+                      {sg}
+                    </option>
+                  ))}
+                </select>
               </div>
               {/* Danh sách Bộ sưu tập (Tags) */}
               <div className="space-y-2 md:col-span-2">

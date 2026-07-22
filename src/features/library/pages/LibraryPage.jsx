@@ -1,16 +1,8 @@
 import { useState } from 'react'
-import { useWorks } from '../hooks/useLibrary'
+import { useWorks, useGenres, useSubGenres } from '../hooks/useLibrary'
 import { useTags } from '../../tag/hooks/useTag'
 import { BookCard } from '../components/BookCard'
-import {
-  Loader2,
-  X,
-  BookOpen,
-  ScrollText,
-  Feather,
-  LibraryBig,
-  Search,
-} from 'lucide-react'
+import { Loader2, X, LibraryBig, Search, BookOpen } from 'lucide-react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../../auth/store/auth.store'
 import { useGetBookmarks } from '../hooks/useReading'
@@ -18,22 +10,26 @@ import { useGetBookmarks } from '../hooks/useReading'
 export const LibraryPage = () => {
   // 1. STATE BỘ LỌC SIDEBAR (Cần bấm Áp dụng)
   const [tempGenre, setTempGenre] = useState('')
+  const [tempSubGenre, setTempSubGenre] = useState('')
   const [tempPeriods, setTempPeriods] = useState([])
   const [appliedFilters, setAppliedFilters] = useState({
     genre: '',
+    subGenre: '',
     periods: [],
   })
   const [activeTag, setActiveTag] = useState('')
   const [currentPage, setCurrentPage] = useState(0)
 
-  // Từ khóa lấy từ URL (?search=) — nút kính lúp trên Header và ô tìm ở Trang chủ
-  // đều điều hướng về đây, nên URL là nguồn sự thật thay vì thêm 1 state riêng.
+  // Đổi genre phụ khi chọn genre chính
+  const handleSelectGenre = (g) => {
+    setTempGenre(g)
+    setTempSubGenre('')
+  }
+
+  // Từ khóa lấy từ URL (?search=)
   const [searchParams, setSearchParams] = useSearchParams()
   const searchKeyword = searchParams.get('search')?.trim() || ''
 
-  // Đổi từ khóa -> về trang 1, tránh rơi vào trang trống của kết quả cũ.
-  // Chỉnh state ngay trong lúc render (không dùng effect) để không tốn 1 lượt
-  // render thừa hiển thị trang cũ: https://react.dev/learn/you-might-not-need-an-effect
   const [lastKeyword, setLastKeyword] = useState(searchKeyword)
   if (lastKeyword !== searchKeyword) {
     setLastKeyword(searchKeyword)
@@ -46,17 +42,19 @@ export const LibraryPage = () => {
     setSearchParams(next, { replace: true })
   }
 
-  // Gọi API
+  // Gọi API Thể loại & Tác phẩm
+  const { data: genresData } = useGenres()
+  const { data: subGenresData } = useSubGenres(tempGenre)
   const { data: tags } = useTags({ size: 1000 })
   const { data: worksPage, isLoading: isLoadingWorks } = useWorks({
     genre: appliedFilters.genre || undefined,
+    subGenre: appliedFilters.subGenre || undefined,
     period:
       appliedFilters.periods.length > 0
         ? appliedFilters.periods.join(',')
         : undefined,
-    tag: activeTag || undefined, // Đảm bảo API Backend bác đang nhận param tên là "tag" nhé
+    tag: activeTag || undefined,
     search: searchKeyword || undefined,
-    // sort: sortBy,
     page: currentPage,
     size: 3,
   })
@@ -65,12 +63,7 @@ export const LibraryPage = () => {
   const { data: bookmarks } = useGetBookmarks(!!user)
   const navigate = useNavigate()
 
-  // DATA CỨNG CHO SIDEBAR
-  const genres = [
-    { label: 'Truyện ngắn', value: 'Truyện ngắn', icon: BookOpen },
-    { label: 'Thơ ca', value: 'Thơ ca', icon: Feather },
-    { label: 'Tiểu thuyết', value: 'Tiểu thuyết', icon: ScrollText },
-  ]
+  const genresList = genresData || []
 
   const periods = [
     { label: 'Văn học dân gian', value: 'dan_gian' },
@@ -83,13 +76,18 @@ export const LibraryPage = () => {
     setCurrentPage(0)
     if (type === 'genre') {
       setTempGenre('')
-      setAppliedFilters((prev) => ({ ...prev, genre: '' }))
+      setTempSubGenre('')
+      setAppliedFilters((prev) => ({ ...prev, genre: '', subGenre: '' }))
+    } else if (type === 'subGenre') {
+      setTempSubGenre('')
+      setAppliedFilters((prev) => ({ ...prev, subGenre: '' }))
     } else {
       const newPeriods = tempPeriods.filter((p) => p !== value)
       setTempPeriods(newPeriods)
       setAppliedFilters((prev) => ({ ...prev, periods: newPeriods }))
     }
   }
+
   return (
     <div className="bg-background min-h-screen flex px-6 w-full max-w-[1440px] mx-auto py-8 gap-10 lg:gap-12">
       {/* SIDEBAR BỘ LỌC */}
@@ -108,26 +106,47 @@ export const LibraryPage = () => {
             Bộ lọc di sản
           </h2>
 
-          {/* Thể loại */}
+          {/* Thể loại chính */}
           <div className="mb-6">
+            <h3 className="font-bold text-sm mb-3 text-primary">
+              Thể loại chính
+            </h3>
             <button
-              onClick={() => setTempGenre('')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm mb-2 font-medium ${tempGenre === '' ? 'bg-[#004943] text-white shadow-md' : 'hover:bg-surface-container-high text-on-surface-variant'}`}
+              onClick={() => handleSelectGenre('')}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm mb-1.5 font-medium transition-colors ${tempGenre === '' ? 'bg-[#004943] text-white shadow-md' : 'hover:bg-surface-container-high text-on-surface-variant'}`}
             >
               <LibraryBig size={18} /> Tất cả thể loại
             </button>
-            {genres.map((g) => {
-              const Icon = g.icon
-              return (
-                <button
-                  key={g.value}
-                  onClick={() => setTempGenre(g.value)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm mb-2 font-medium transition-colors ${tempGenre === g.value ? 'bg-[#004943] text-white shadow-md' : 'hover:bg-surface-container-high text-on-surface-variant'}`}
+            {genresList.map((g) => (
+              <button
+                key={g}
+                onClick={() => handleSelectGenre(g)}
+                className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm mb-1.5 font-medium transition-colors ${tempGenre === g ? 'bg-[#004943] text-white shadow-md' : 'hover:bg-surface-container-high text-on-surface-variant'}`}
+              >
+                {g}
+              </button>
+            ))}
+
+            {/* Thể loại phụ (Dropdown xuất hiện khi đã chọn thể loại chính) */}
+            {tempGenre && subGenresData && subGenresData.length > 0 && (
+              <div className="mt-3 mb-2 pl-3 border-l-2 border-[#004943]/30">
+                <label className="block text-xs font-bold text-primary mb-1.5">
+                  Thể loại phụ
+                </label>
+                <select
+                  value={tempSubGenre}
+                  onChange={(e) => setTempSubGenre(e.target.value)}
+                  className="w-full bg-white border border-outline-variant/30 rounded-lg px-3 py-2 text-xs font-medium text-on-surface-variant focus:outline-none focus:border-[#004943] cursor-pointer"
                 >
-                  <Icon size={18} /> {g.label}
-                </button>
-              )
-            })}
+                  <option value="">Tất cả thể loại phụ</option>
+                  {subGenresData.map((sg) => (
+                    <option key={sg} value={sg}>
+                      {sg}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* Thời kỳ */}
@@ -159,7 +178,11 @@ export const LibraryPage = () => {
 
           <button
             onClick={() => {
-              setAppliedFilters({ genre: tempGenre, periods: tempPeriods })
+              setAppliedFilters({
+                genre: tempGenre,
+                subGenre: tempSubGenre,
+                periods: tempPeriods,
+              })
               setCurrentPage(0)
             }}
             className="w-full bg-[#EAECE6] text-primary py-3 rounded-xl font-bold hover:bg-[#d2d6ce] transition-colors shadow-sm"
@@ -180,6 +203,7 @@ export const LibraryPage = () => {
             </span>
             {!(
               appliedFilters.genre ||
+              appliedFilters.subGenre ||
               appliedFilters.periods.length > 0 ||
               searchKeyword
             ) && <span className="text-sm font-bold text-primary">Tất cả</span>}
@@ -200,11 +224,22 @@ export const LibraryPage = () => {
 
             {appliedFilters.genre && (
               <span className="bg-[#004943]/10 text-[#004943] px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 border border-[#004943]/20">
-                {genres.find((g) => g.value === appliedFilters.genre)?.label}
+                {appliedFilters.genre}
                 <X
                   size={14}
                   className="cursor-pointer hover:bg-[#004943]/20 rounded-full p-0.5 transition-colors"
                   onClick={() => removeFilter('genre')}
+                />
+              </span>
+            )}
+
+            {appliedFilters.subGenre && (
+              <span className="bg-[#004943]/10 text-[#004943] px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 border border-[#004943]/20">
+                {appliedFilters.subGenre}
+                <X
+                  size={14}
+                  className="cursor-pointer hover:bg-[#004943]/20 rounded-full p-0.5 transition-colors"
+                  onClick={() => removeFilter('subGenre')}
                 />
               </span>
             )}
