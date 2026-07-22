@@ -67,6 +67,27 @@ export const getMeApi = async () => {
   return response.data.result
 }
 
+// Gọi API cập nhật thông tin cá nhân, trả về UserResponse đã cập nhật
+// BE: PATCH /v1/auth/me → ApiResponse<UserResponse>
+// Hiện chỉ cho phép sửa fullName — email/roles/status do hệ thống quản lý
+export const updateProfileApi = async ({ fullName }) => {
+  const response = await apiClient.patch('/v1/auth/me', { fullName })
+  // response.data.result là UserResponse mới nhất
+  return response.data.result
+}
+
+// Gọi API đổi mật khẩu, trả về ApiResponse<Void> (để lấy .message xác nhận thành công)
+// BE: POST /v1/auth/change-password → ApiResponse<Void>
+// Lưu ý: chỉ gửi { currentPassword, newPassword } — confirmPassword chỉ validate phía client.
+// BE KHÔNG thu hồi token sau khi đổi → phiên đăng nhập hiện tại vẫn dùng bình thường.
+export const changePasswordApi = async ({ currentPassword, newPassword }) => {
+  const response = await apiClient.post('/v1/auth/change-password', {
+    currentPassword,
+    newPassword,
+  })
+  return response.data
+}
+
 // Gọi API làm mới token, trả về TokenResponse mới (accessToken, refreshToken, expiresIn)
 // BE: POST /v1/auth/refresh → ApiResponse<TokenResponse>
 // Lưu ý: hàm này dùng cho mục đích gọi thủ công (ví dụ debug). Response interceptor trong

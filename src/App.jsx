@@ -12,6 +12,8 @@ import { RegisterPage } from './features/auth/pages/RegisterPage'
 import { VerifyOtpPage } from './features/auth/pages/VerifyOtpPage'
 import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage'
+import { ProfilePage } from './features/auth/pages/ProfilePage'
+import { ProtectedRoute } from './components/common/ProtectedRoute'
 import { Header } from './components/layout/Header'
 import { Footer } from './components/layout/Footer'
 import { ChatWidget } from './components/common/ChatWidget'
@@ -53,7 +55,11 @@ export default function App() {
               {/* Luồng quên mật khẩu: nhập email → nhận OTP → đặt lại */}
               <Route path="/quen-mat-khau" element={<ForgotPasswordPage />} />
               <Route path="/dat-lai-mat-khau" element={<ResetPasswordPage />} />
-              <Route path="/ca-nhan/reviews" element={<MyReviewsPage />} />
+              {/* --- KHU VỰC CÁ NHÂN: yêu cầu đã đăng nhập, mọi role đều vào được --- */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/ca-nhan" element={<ProfilePage />} />
+                <Route path="/ca-nhan/reviews" element={<MyReviewsPage />} />
+              </Route>
               {/* --- ADMIN ROUTES --- */}
               <Route element={<AdminRoute />}>
                 <Route
