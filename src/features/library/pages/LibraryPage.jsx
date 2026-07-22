@@ -9,8 +9,9 @@ import {
   ScrollText,
   Feather,
   LibraryBig,
+  Search,
 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../../auth/store/auth.store'
 import { useGetBookmarks } from '../hooks/useReading'
 
@@ -24,6 +25,27 @@ export const LibraryPage = () => {
   })
   const [activeTag, setActiveTag] = useState('')
   const [currentPage, setCurrentPage] = useState(0)
+
+  // Từ khóa lấy từ URL (?search=) — nút kính lúp trên Header và ô tìm ở Trang chủ
+  // đều điều hướng về đây, nên URL là nguồn sự thật thay vì thêm 1 state riêng.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const searchKeyword = searchParams.get('search')?.trim() || ''
+
+  // Đổi từ khóa -> về trang 1, tránh rơi vào trang trống của kết quả cũ.
+  // Chỉnh state ngay trong lúc render (không dùng effect) để không tốn 1 lượt
+  // render thừa hiển thị trang cũ: https://react.dev/learn/you-might-not-need-an-effect
+  const [lastKeyword, setLastKeyword] = useState(searchKeyword)
+  if (lastKeyword !== searchKeyword) {
+    setLastKeyword(searchKeyword)
+    setCurrentPage(0)
+  }
+
+  const clearSearch = () => {
+    const next = new URLSearchParams(searchParams)
+    next.delete('search')
+    setSearchParams(next, { replace: true })
+  }
+
   // Gọi API
   const { data: tags } = useTags({ size: 1000 })
   const { data: worksPage, isLoading: isLoadingWorks } = useWorks({
@@ -33,6 +55,7 @@ export const LibraryPage = () => {
         ? appliedFilters.periods.join(',')
         : undefined,
     tag: activeTag || undefined, // Đảm bảo API Backend bác đang nhận param tên là "tag" nhé
+    search: searchKeyword || undefined,
     // sort: sortBy,
     page: currentPage,
     size: 3,
@@ -155,8 +178,24 @@ export const LibraryPage = () => {
             <span className="text-sm text-on-surface-variant font-medium">
               Đang lọc theo:
             </span>
-            {!(appliedFilters.genre || appliedFilters.periods.length > 0) && (
-              <span className="text-sm font-bold text-primary">Tất cả</span>
+            {!(
+              appliedFilters.genre ||
+              appliedFilters.periods.length > 0 ||
+              searchKeyword
+            ) && <span className="text-sm font-bold text-primary">Tất cả</span>}
+
+            {searchKeyword && (
+              <span className="bg-[#ab3429]/10 text-[#ab3429] px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 border border-[#ab3429]/20 max-w-[260px]">
+                <Search size={12} className="flex-shrink-0" />
+                <span className="truncate" title={searchKeyword}>
+                  {searchKeyword}
+                </span>
+                <X
+                  size={14}
+                  className="cursor-pointer hover:bg-[#ab3429]/20 rounded-full p-0.5 transition-colors flex-shrink-0"
+                  onClick={clearSearch}
+                />
+              </span>
             )}
 
             {appliedFilters.genre && (
