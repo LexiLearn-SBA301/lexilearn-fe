@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Loader2,
@@ -75,6 +76,9 @@ export const ReadingPageSidebar = ({
   isPurePoetry,
   activeSectionId,
 }) => {
+  const [selectedCharacterAnalysis, setSelectedCharacterAnalysis] =
+    useState(null)
+
   return (
     <>
       {/* LỚP PHỦ KHI MỞ SIDEBAR (Chỉ hiện trên Mobile/Tablet) */}
@@ -379,6 +383,17 @@ export const ReadingPageSidebar = ({
                       <p className="text-[13.5px] font-quote text-[#50443e] leading-[1.85] text-justify relative z-10 flex-1">
                         {c.description}
                       </p>
+
+                      {c.analysis && (
+                        <div className="relative z-10 mt-4 pt-4 border-t border-[#83746d]/10">
+                          <button
+                            onClick={() => setSelectedCharacterAnalysis(c)}
+                            className="w-full py-2 bg-[#ab3429]/5 hover:bg-[#ab3429]/15 text-[#ab3429] text-[11px] font-bold uppercase tracking-wider rounded-xl transition-colors flex items-center justify-center gap-2"
+                          >
+                            <BookOpen size={14} /> Đọc phân tích
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )
                 })
@@ -401,6 +416,50 @@ export const ReadingPageSidebar = ({
           </Link>
         </div>
       </aside>
+
+      {/* MODAL PHÂN TÍCH NHÂN VẬT */}
+      {selectedCharacterAnalysis && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-[#2b211c]/60 backdrop-blur-sm transition-opacity"
+            onClick={() => setSelectedCharacterAnalysis(null)}
+          ></div>
+          <div className="relative bg-[#FAF3E7] w-full max-w-2xl max-h-[85vh] rounded-[24px] shadow-2xl flex flex-col animate-in zoom-in-95 duration-300 overflow-hidden border border-[#83746d]/20">
+            <div className="absolute top-0 right-0 p-4 z-20">
+              <button
+                onClick={() => setSelectedCharacterAnalysis(null)}
+                className="p-2 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="relative p-6 md:p-8 bg-gradient-to-br from-[#412311] to-[#5a3825] text-white shrink-0 overflow-hidden">
+              <div className="absolute inset-0 opacity-20 mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')]"></div>
+              <div className="relative z-10">
+                <div className="text-[10px] text-[#ffdbca]/70 uppercase tracking-widest mb-2 font-bold flex items-center gap-2">
+                  <Star size={12} /> Phân tích chuyên sâu
+                </div>
+                <h3 className="font-title text-3xl font-black mb-3">
+                  {selectedCharacterAnalysis.name}
+                </h3>
+                {selectedCharacterAnalysis.role && (
+                  <div className="inline-flex items-center px-3 py-1 bg-white/10 border border-white/20 rounded-full text-[10px] uppercase font-bold tracking-[0.1em]">
+                    {selectedCharacterAnalysis.role}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="relative p-6 md:p-8 overflow-y-auto custom-scrollbar flex-1">
+              <div className="absolute inset-0 pointer-events-none opacity-30 mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')]"></div>
+              <div className="relative z-10 font-quote text-[#412311] leading-[1.85] text-justify whitespace-pre-wrap text-[15px]">
+                {selectedCharacterAnalysis.analysis}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }
