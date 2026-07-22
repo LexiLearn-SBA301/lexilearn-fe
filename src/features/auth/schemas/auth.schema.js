@@ -147,3 +147,56 @@ export const defaultResetPasswordValues = {
   newPassword: '',
   confirmPassword: '',
 }
+
+// Schema khớp với BE: UpdateProfileRequest (PATCH /v1/auth/me)
+// - fullName: @NotBlank + @Size(max = 100)
+// Lưu ý: email/vai trò/trạng thái là read-only, KHÔNG cho sửa nên không nằm trong schema
+export const updateProfileSchema = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .min(1, 'Họ và tên không được để trống')
+    .max(100, 'Họ và tên tối đa 100 ký tự'),
+})
+
+export const defaultUpdateProfileValues = {
+  fullName: '',
+}
+
+// Schema khớp với BE: ChangePasswordRequest (POST /v1/auth/change-password)
+// - currentPassword: @NotBlank
+// - newPassword: @NotBlank + @Size(min=8, max=64) + regex ^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$
+//   (giống hệt ràng buộc của resetPasswordSchema.newPassword)
+// Lưu ý: confirmPassword chỉ validate phía client, KHÔNG gửi lên BE.
+// Ràng buộc "mật khẩu mới phải khác mật khẩu hiện tại" cũng được check sớm ở client
+// để đỡ tốn 1 vòng request, BE vẫn là nguồn quyết định (code: password_same_as_old).
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Mật khẩu hiện tại không được để trống'),
+
+    newPassword: z
+      .string()
+      .min(1, 'Mật khẩu mới không được để trống')
+      .min(8, 'Mật khẩu phải từ 8 đến 64 ký tự')
+      .max(64, 'Mật khẩu phải từ 8 đến 64 ký tự')
+      .regex(
+        /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/,
+        'Mật khẩu phải có ít nhất 1 chữ hoa, 1 chữ thường và 1 chữ số',
+      ),
+
+    confirmPassword: z.string().min(1, 'Vui lòng xác nhận mật khẩu mới'),
+  })
+  .refine((data) => data.newPassword !== data.currentPassword, {
+    message: 'Mật khẩu mới phải khác mật khẩu hiện tại',
+    path: ['newPassword'],
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Mật khẩu xác nhận không khớp',
+    path: ['confirmPassword'], // Focus lỗi vào ô xác nhận mật khẩu
+  })
+
+export const defaultChangePasswordValues = {
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+}

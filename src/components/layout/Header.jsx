@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react' // Bổ sung useState và useEffect
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Search, Menu, User, LogOut, Star, X } from 'lucide-react'
+import { Search, Menu, User, UserCog, LogOut, Star, X } from 'lucide-react'
 import { useAuthStore } from '../../features/auth/store/auth.store'
 import { useChatStore } from '../../features/library/store/chat.store'
 
@@ -236,6 +236,15 @@ export const Header = () => {
               </button>
               {isMenuOpen && (
                 <div className="absolute right-0 mt-2 w-52 bg-[#fff9ef] rounded-2xl shadow-xl border border-outline-variant/10 py-2 overflow-hidden">
+                  {/* Hồ sơ cá nhân — dùng chung cho cả admin lẫn user thường */}
+                  <Link
+                    to="/ca-nhan"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex items-center gap-2 w-full px-4 py-2.5 text-left text-on-surface-variant hover:bg-surface-container hover:text-primary transition-colors font-semibold text-[15px]"
+                  >
+                    <UserCog size={18} strokeWidth={2} />
+                    Hồ sơ cá nhân
+                  </Link>
                   <Link
                     to="/ca-nhan/reviews"
                     onClick={() => setIsMenuOpen(false)}
