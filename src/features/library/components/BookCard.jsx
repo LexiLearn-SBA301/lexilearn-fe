@@ -1,7 +1,18 @@
 import { BookOpen, Sparkles, Feather } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useChatStore } from '../store/chat.store'
 
 export const BookCard = ({ work }) => {
+  const openChat = useChatStore((s) => s.openChat)
+
+  // Mở popup chatbot kèm sẵn câu hỏi về đúng tác phẩm của thẻ này
+  const handleAskAI = () => {
+    const author = work.authorName ? ` của ${work.authorName}` : ''
+    openChat(
+      `Giới thiệu và phân tích ngắn gọn tác phẩm "${work.title}"${author}.`,
+    )
+  }
+
   return (
     <article className="literature-card h-full bg-bright-cream rounded-[24px] overflow-hidden border border-outline-variant/30 flex flex-col group relative font-body">
       <div className="aspect-[3/2] w-full shrink-0 overflow-hidden relative bg-surface-container-high flex items-center justify-center">
@@ -59,7 +70,10 @@ export const BookCard = ({ work }) => {
           >
             <BookOpen size={16} /> Đọc tài liệu
           </Link>
-          <button className="w-full bg-transparent text-tertiary-container py-2 rounded-xl hover:bg-tertiary-container/10 transition-colors text-sm font-bold flex items-center justify-center gap-2">
+          <button
+            onClick={handleAskAI}
+            className="w-full bg-transparent text-tertiary-container py-2 rounded-xl hover:bg-tertiary-container/10 transition-colors text-sm font-bold flex items-center justify-center gap-2 cursor-pointer"
+          >
             <Sparkles size={16} /> Hỏi AI
           </button>
         </div>

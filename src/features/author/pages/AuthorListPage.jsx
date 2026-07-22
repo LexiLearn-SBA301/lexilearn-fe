@@ -18,7 +18,8 @@ export const AuthorListPage = () => {
   const [appliedPeriod, setAppliedPeriod] = useState('')
 
   const [currentPage, setCurrentPage] = useState(0)
-  const ITEMS_PER_PAGE = 4
+  // Khớp với lưới bên dưới (2 cột ở sm, 3 cột ở xl) -> 6 lấp đầy trang, không để ô trống
+  const ITEMS_PER_PAGE = 6
 
   const { data: authorsPage, isLoading } = useAuthors({
     search: searchQuery,

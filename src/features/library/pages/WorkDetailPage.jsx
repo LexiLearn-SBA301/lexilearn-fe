@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useWorkDetail } from '../hooks/useLibrary'
+import { useChatStore } from '../store/chat.store'
 import {
   BookOpen,
   Sparkles,
@@ -15,6 +16,7 @@ export const WorkDetailPage = () => {
   const { slug } = useParams()
   const { data: work, isLoading } = useWorkDetail(slug)
   const [activeTab, setActiveTab] = useState('tong-quan')
+  const openChat = useChatStore((s) => s.openChat)
 
   if (isLoading)
     return (
@@ -132,7 +134,16 @@ export const WorkDetailPage = () => {
               {/* KẾT THÚC PHẦN CODE CỦA THÀNH VIÊN C                       */}
               {/* ======================================================= */}
 
-              <button className="bg-[#004943] text-white px-8 py-3.5 rounded-xl hover:bg-[#02504a] transition-all shadow-md font-bold flex items-center gap-2">
+              <button
+                onClick={() =>
+                  openChat(
+                    `Giới thiệu và phân tích ngắn gọn tác phẩm "${work.title}"${
+                      work.authorName ? ` của ${work.authorName}` : ''
+                    }.`,
+                  )
+                }
+                className="bg-[#004943] text-white px-8 py-3.5 rounded-xl hover:bg-[#02504a] transition-all shadow-md font-bold flex items-center gap-2 cursor-pointer"
+              >
                 <Sparkles size={20} /> Hỏi chatbot
               </button>
             </div>

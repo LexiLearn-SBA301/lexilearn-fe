@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react' // Bổ sung useState và useEffect
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Search, Menu, User, LogOut, Star } from 'lucide-react'
+import { Search, Menu, User, LogOut, Star, X } from 'lucide-react'
 import { useAuthStore } from '../../features/auth/store/auth.store'
 import { useChatStore } from '../../features/library/store/chat.store'
 
@@ -13,10 +13,20 @@ export const Header = () => {
   const menuRef = useRef(null)
   const homeLink = isAdmin ? '/admin/thu-vien' : '/thu-vien'
 
+  // Ô tìm kiếm bung ra từ nút kính lúp; gửi từ khóa sang Thư viện qua ?search=
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const searchRef = useRef(null)
+  const searchInputRef = useRef(null)
+
   // Trạng thái đăng nhập: có accessToken nghĩa là đã đăng nhập
   const accessToken = useAuthStore((state) => state.accessToken)
   const clearTokens = useAuthStore((state) => state.clearTokens)
+  const user = useAuthStore((state) => state.user)
   const isAuthenticated = Boolean(accessToken)
+
+  // Tài khoản ADMIN không cần ô tìm kiếm của bạn đọc -> ẩn hẳn nút kính lúp
+  const isAdminUser = Boolean(user?.roles?.includes('ADMIN'))
 
   // Mở popup chatbot dùng chung (thay cho việc điều hướng tới /chatbot)
   const openChat = useChatStore((state) => state.openChat)
@@ -40,6 +50,51 @@ export const Header = () => {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  // Click ra ngoài -> thu ô tìm kiếm lại (vẫn giữ từ khóa đã gõ cho lần mở sau)
+  useEffect(() => {
+    if (!isSearchOpen) return
+    const handleClickOutside = (event) => {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setIsSearchOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [isSearchOpen])
+
+  // Bung ô nhập -> focus luôn để gõ được ngay
+  useEffect(() => {
+    if (isSearchOpen) searchInputRef.current?.focus()
+  }, [isSearchOpen])
+
+  // Bấm kính lúp: chưa mở thì bung ô nhập, đang mở & có chữ thì tìm luôn
+  const handleSearchClick = () => {
+    if (!isSearchOpen) {
+      setIsSearchOpen(true)
+      return
+    }
+    submitSearch()
+  }
+
+  const submitSearch = () => {
+    const keyword = searchTerm.trim()
+    if (!keyword) {
+      searchInputRef.current?.focus()
+      return
+    }
+    navigate(`/thu-vien?search=${encodeURIComponent(keyword)}`)
+    setIsSearchOpen(false)
+    setSearchTerm('')
+  }
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') submitSearch()
+    if (e.key === 'Escape') {
+      setSearchTerm('')
+      setIsSearchOpen(false)
+    }
+  }
 
   // Đăng xuất: xóa token rồi quay về trang chủ
   const handleLogout = () => {
@@ -122,9 +177,53 @@ export const Header = () => {
         )}
         {/* Actions */}
         <div className="flex items-center gap-4">
-          <button className="text-on-surface-variant hover:text-primary p-2 rounded-full hover:bg-surface-container transition-colors">
-            <Search size={20} strokeWidth={2} />
-          </button>
+          {!isAdminUser && (
+            <div ref={searchRef} className="flex items-center">
+              {/* Ô nhập bung ra bên trái nút kính lúp */}
+              <div
+                className={`overflow-hidden transition-all duration-300 ease-out ${
+                  isSearchOpen
+                    ? 'w-44 md:w-64 opacity-100 mr-1'
+                    : 'w-0 opacity-0'
+                }`}
+              >
+                <div className="flex items-center gap-1 bg-surface-container-lowest border border-outline-variant/40 rounded-full pl-4 pr-1 py-1.5 shadow-sm">
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={handleSearchKeyDown}
+                    placeholder="Tìm tác phẩm, tác giả..."
+                    aria-label="Tìm kiếm tác phẩm"
+                    // Đang thu lại (w-0) thì bỏ khỏi luồng Tab, tránh focus vào ô vô hình
+                    tabIndex={isSearchOpen ? 0 : -1}
+                    className="w-full bg-transparent text-sm text-primary placeholder:text-on-surface-variant/60 focus:outline-none"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => {
+                        setSearchTerm('')
+                        searchInputRef.current?.focus()
+                      }}
+                      aria-label="Xóa từ khóa"
+                      className="p-1 rounded-full text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
+                    >
+                      <X size={14} strokeWidth={2.5} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={handleSearchClick}
+                aria-label={isSearchOpen ? 'Tìm kiếm' : 'Mở ô tìm kiếm'}
+                className="text-on-surface-variant hover:text-primary p-2 rounded-full hover:bg-surface-container transition-colors cursor-pointer flex-shrink-0"
+              >
+                <Search size={20} strokeWidth={2} />
+              </button>
+            </div>
+          )}
           {isAuthenticated ? (
             // Đã đăng nhập: hiển thị icon user kèm dropdown đăng xuất
             <div className="relative hidden md:block" ref={menuRef}>
