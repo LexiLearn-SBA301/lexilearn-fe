@@ -4,7 +4,7 @@ import {
   useUpdateMyReview,
   useDeleteMyReview,
 } from '../hooks/useReview'
-import { Star, Edit2, Trash2, Loader2, X, AlertCircle } from 'lucide-react'
+import { Star, Edit2, Trash2, Loader2, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -105,55 +105,29 @@ export const MyReviewsPage = () => {
                 </div>
               </div>
 
-              {/* Display pending version if exists */}
-              {review.pendingRevision && (
-                <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-xl p-4">
-                  <div className="text-xs font-bold text-yellow-700 uppercase tracking-wider mb-2">
-                    Đang chờ duyệt
-                  </div>
-                  <h4 className="font-bold text-gray-800 mb-1">
-                    {review.pendingRevision.title}
-                  </h4>
-                  <p className="text-gray-700 whitespace-pre-wrap">
-                    {review.pendingRevision.content}
-                  </p>
-                </div>
-              )}
+              {/* Nội dung bài đánh giá */}
+              {(() => {
+                const activeRevision =
+                  review.approvedRevision ||
+                  review.pendingRevision ||
+                  review.latestRejectedRevision ||
+                  review
+                const revTitle = activeRevision.title || review.title
+                const revContent = activeRevision.content || review.content
 
-              {/* Display rejected version if exists */}
-              {review.latestRejectedRevision && (
-                <div className="mb-4 bg-red-50 border border-red-200 rounded-xl p-4">
-                  <div className="text-xs font-bold text-red-700 uppercase tracking-wider mb-2 flex items-center gap-1">
-                    <AlertCircle size={14} /> Bị từ chối
-                  </div>
-                  <p className="text-red-600 text-sm mb-3">
-                    Lý do: {review.latestRejectedRevision.rejectionReason}
-                  </p>
-                  <div className="opacity-70">
-                    <h4 className="font-bold text-gray-800 mb-1">
-                      {review.latestRejectedRevision.title}
-                    </h4>
-                    <p className="text-gray-700 whitespace-pre-wrap">
-                      {review.latestRejectedRevision.content}
+                return (
+                  <div className="bg-surface-container-low border border-outline-variant/20 rounded-2xl p-5">
+                    {revTitle && (
+                      <h4 className="font-bold text-gray-800 text-lg mb-2">
+                        {revTitle}
+                      </h4>
+                    )}
+                    <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                      {revContent}
                     </p>
                   </div>
-                </div>
-              )}
-
-              {/* Display approved version if exists */}
-              {review.approvedRevision && (
-                <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-                  <div className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-2">
-                    Đang công khai
-                  </div>
-                  <h4 className="font-bold text-gray-800 mb-1">
-                    {review.approvedRevision.title}
-                  </h4>
-                  <p className="text-gray-700 whitespace-pre-wrap">
-                    {review.approvedRevision.content}
-                  </p>
-                </div>
-              )}
+                )
+              })()}
             </div>
           ))}
 
@@ -317,7 +291,7 @@ const EditReviewModal = ({ review, onClose, onSubmit, isPending }) => {
               disabled={isPending}
             >
               {isPending && <Loader2 size={16} className="animate-spin" />}
-              Lưu thay đổi (Gửi duyệt lại)
+              Lưu thay đổi
             </button>
           </div>
         </form>

@@ -596,17 +596,6 @@ export const ReadingPageContent = ({
           </div>
         )}
 
-        {/* Ảnh bìa tác phẩm */}
-        {work?.coverUrl && (
-          <div className="flex justify-center mb-10">
-            <img
-              src={work.coverUrl}
-              alt={work.title}
-              className="w-32 md:w-48 h-auto object-cover rounded-xl shadow-lg border border-black/10"
-            />
-          </div>
-        )}
-
         {/* Tiêu đề & Nội dung */}
         {isPurePoetry ? (
           <div className="space-y-12">

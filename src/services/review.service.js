@@ -49,35 +49,3 @@ export const deleteMyReview = async (reviewId) => {
   const res = await apiClient.delete(`v1/me/reviews/${reviewId}`)
   return res.data
 }
-
-// ---------------------------------------------------------
-// ADMIN API (Quản trị viên kiểm duyệt)
-// ---------------------------------------------------------
-export const fetchAdminReviewRevisions = async (params = {}) => {
-  // status: PENDING, APPROVED, REJECTED, SUPERSEDED
-  const {
-    status = 'PENDING',
-    page = 0,
-    size = 10,
-    sortDir = 'asc',
-    sortBy = 'createdAt',
-  } = params
-  const res = await apiClient.get(`v1/admin/review-revisions`, {
-    params: { status, page, size, sortDir, sortBy },
-  })
-  return res.data.result
-}
-
-export const fetchAdminReviewRevisionDetail = async (revisionId) => {
-  const res = await apiClient.get(`v1/admin/review-revisions/${revisionId}`)
-  return res.data.result
-}
-
-export const moderateReviewRevision = async ({ revisionId, data }) => {
-  // data = { decision: 'APPROVE' | 'REJECT', rejectionReason: string | null }
-  const res = await apiClient.patch(
-    `v1/admin/review-revisions/${revisionId}/moderation`,
-    data,
-  )
-  return res.data.result
-}
